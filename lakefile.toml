@@ -1,0 +1,6 @@
+name = "lean-verification-journey"
+version = "0.1.0"
+defaultTargets = ["LeanVerificationJourney"]
+
+[[lean_lib]]
+name = "LeanVerificationJourney"
