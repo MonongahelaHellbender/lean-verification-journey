@@ -269,11 +269,46 @@ duly shows the extra `ofReduceBool` (compiler) axiom. That's the trusted-base la
 *deliberately*, exactly when the cheaper rung runs out — and being able to say precisely which rung
 you're on is the skill.
 
-**Where it stops (for now).** The checker is RUP-only (no RAT steps yet) and won't *scale* to the
-~5-million-step S(4) ≤ 44 certificate — but that's a performance limit (a linked-list database is
-O(n²)), **not** a soundness limit. The proof already guarantees correctness at any size; what's missing
-is an efficient, array-backed data structure. That gap — fast *and* verified — is precisely where the
-real research lives.
+**Where it stops (for now).** The checker is RUP-only (no RAT steps yet). Scaling further ran into a
+genuinely instructive surprise — see the next section.
+
+---
+
+## Scaling, and the lesson of measuring the right thing (`LratScale.lean`)
+
+The obvious way to push to bigger certificates is "make the checker faster" — and the textbook move is to
+replace the linked-list clause database (whose `++` append is O(n)) with an array (O(1)). That instinct is
+reasonable, and an array-backed version *was* built and proved sound. **It gave essentially zero speedup.**
+
+Why? Because the bottleneck was never the checker. A 6179-step certificate written as a `List Step`
+*literal* takes ~335 seconds just for Lean to **elaborate** — to chew through a 6179-deep nested `cons`
+expression at the syntax level, before any checking happens at all. The checker's actual runtime, once
+compiled to native code, is well under a second even as a humble linked list. We optimized the part that
+wasn't slow.
+
+The fix addresses the *real* bottleneck: ship the certificate as a single **`String`** literal. A string
+is one token — it elaborates instantly, no matter how long — and you parse it into clauses and steps at
+native runtime, where speed is a non-issue. Same verified checker, unchanged. W(3,3) ≤ 27 (a 6179-step
+proof) drops from ~335 s to ~1.5 s.
+
+The transferable lesson is one every engineer re-learns the hard way, and it's worth internalizing here
+where it's cheap: **measure before you optimize.** The "scale" problem looked like an algorithms problem
+and was actually a representation problem one layer down. When you're handed a slow AI system — or any
+system — the discipline is the same: find where the time actually goes before you rewrite the part you
+*assumed* was slow.
+
+**The honest cost, precisely located.** Reading a `String`'s characters rests on Lean's classical String
+library, so `w33_unsat` adds `Classical.choice` to its axioms (on top of `native_decide`'s
+`ofReduceBool`). That's a real, named entry in the trusted base — documented, standard, and exactly the
+kind of thing being precise about is the whole point. And the parser remains *untrusted for soundness*:
+`checkProof_unsat` holds for whatever it produces, so a parser bug can only make the check refuse, never
+accept a false `Unsat`.
+
+**The remaining ceiling** is now the string literal's own size. Certificates in the millions of steps
+(S(4) ≤ 44 ≈ 5M, W(2,5) ≤ 178 ≈ 600k) would be tens of megabytes of source — impractical to embed. Going
+there means reading the certificate from a *file* at runtime, which is how standalone verified checkers
+(`cake_lpr`) actually work — a different architecture from a self-contained Lean theorem, and a natural
+next rung.
 
 ---
 

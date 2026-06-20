@@ -50,6 +50,7 @@ which a one-line certificate now discharges.
 | `schur5_unsat` | **S(2) ≤ 4** via a *real* solver certificate (Schur {1..5}, k=2) | ✅ `decide` |
 | `vdw923_unsat` | **W(2,3) ≤ 9** via a *real* certificate (10 proof steps, 50 clauses) | ✅ `decide` |
 | `w24_unsat` ([`LratW24.lean`](LeanVerificationJourney/LratW24.lean)) | **W(2,4) ≤ 35** — 2³⁵ ≈ 34 billion colorings, *far beyond brute force* — via a real 429-step certificate | ✅ `native_decide` |
+| `w33_unsat` ([`LratScale.lean`](LeanVerificationJourney/LratScale.lean)) | **W(3,3) ≤ 27** — a real **6179-step** certificate, certified in ~1.5 s | ✅ `native_decide`, String-encoded |
 
 These are **not hand-written**: a real `glucose` run produces a DRAT proof, `drat-trim` converts it to
 an LRAT certificate (`s VERIFIED`), and the data fed to `checkProof` is parsed straight from that. The
@@ -64,10 +65,21 @@ too many to reduce in the kernel), so its `#print axioms` honestly shows the ext
 (compiler) axiom — the documented cost of climbing one rung up the trusted-base ladder, on purpose, when
 brute force is off the table.
 
-**Honest boundary.** The checker handles RUP steps (the common case; these certificates are RUP-only)
-but not yet RAT steps, and it won't *scale* to the ~5-million-step S(4) ≤ 44 certificate — that's a
-data-structure/performance wall (list append is O(n²)), not a soundness gap: the proof already covers
-correctness at any size. Efficient array-backed checking is the next step.
+**Scaling — and where the real wall turned out to be.** Pushing past a few hundred steps surfaced a
+surprise. A 6179-step certificate embedded as a `List Step` *literal* takes ~335 s just to **elaborate**
+(Lean chewing through the nested `cons` literal); the checker's runtime is a rounding error beside it. So
+the wall was never the checker's algorithm — it was the literal. Shipping the certificate as a single
+`String` (one token — elaborates instantly) and parsing it at native runtime takes W(3,3) ≤ 27 from
+~335 s to ~1.5 s, with **no change to the verified checker** ([`LratScale.lean`](LeanVerificationJourney/LratScale.lean)).
+The cost, precisely located: reading a `String` rests on Lean's classical String API, so `w33_unsat`
+adds `Classical.choice`. (An array-backed database is the textbook "scale" move and it's sound, but it
+gave ~0 speedup here — runtime was never the bottleneck. *Measure before optimizing.*)
+
+**Honest boundary.** The checker handles RUP steps (the common case; these certificates are RUP-only) but
+not yet RAT steps. The remaining ceiling is the `String` literal's own size: ~millions of steps (S(4) ≤ 44's
+~5M, W(2,5) ≤ 178's ~600k) would mean tens-of-MB source files — impractical to embed. Reaching those needs
+reading the certificate from a *file* at runtime (what standalone checkers like `cake_lpr` do), a different
+architecture from a self-contained Lean theorem. None of this is a soundness gap: the proof covers any size.
 
 ## Understanding it (the point is the ideas, not the syntax)
 
@@ -83,7 +95,7 @@ See [SETUP.md](SETUP.md) — install Lean 4, build, and open in VS Code to see t
 ## Why public
 
 The visibility is the point: this is a portfolio that grows as the skill grows. Roadmap ahead —
-array-backed LRAT checking to scale past tiny instances, RAT-step support, then a lemma from a 1D
-fluid blow-up analysis, then small Mathlib contributions.
+RAT-step support, file-read certificates for true scale (S(4)/W(2,5)), then a lemma from a 1D fluid
+blow-up analysis, then small Mathlib contributions.
 
 MIT licensed.
