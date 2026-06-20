@@ -305,10 +305,47 @@ kind of thing being precise about is the whole point. And the parser remains *un
 accept a false `Unsat`.
 
 **The remaining ceiling** is now the string literal's own size. Certificates in the millions of steps
-(S(4) ≤ 44 ≈ 5M, W(2,5) ≤ 178 ≈ 600k) would be tens of megabytes of source — impractical to embed. Going
-there means reading the certificate from a *file* at runtime, which is how standalone verified checkers
-(`cake_lpr`) actually work — a different architecture from a self-contained Lean theorem, and a natural
-next rung.
+(S(4) ≤ 44 ≈ 2.3M, W(2,5) ≤ 178 ≈ 600k) would be hundreds of megabytes of source — impractical to embed.
+Going there means a different kind of artifact entirely — see the next section.
+
+---
+
+## The top of the ladder — when "a theorem" is the wrong shape (`Main.lean`, `LratArray.lean`)
+
+There's a rung where the whole "kernel-checked proof object" framing runs out, and seeing *why* is the
+deepest idea in this repo.
+
+To certify S(4) ≤ 44 you need a ~2.3-million-step certificate. You cannot make that a `theorem`:
+- the kernel can't read a file (it has no IO), and
+- a 2.3M-step *literal* can't be elaborated (hundreds of MB of source).
+
+So the top rung is not a bigger theorem — it's a **proven program**. We compile the verified checker to an
+executable (`lratcheck`) that reads the certificate from a file and runs it. It certified **S(4) ≤ 44**
+(2.3M steps, ~3 min) and **W(2,5) ≤ 178** (607k steps, ~47 s) — both *known* numbers, both impossible to
+package as a self-contained theorem.
+
+**What you trust changes — and naming the change is the whole skill.** When the kernel checks a proof, you
+trust the kernel and nothing else. When you *run a proven program*, the output `s VERIFIED` is not itself
+a checked proof object; it is the result of executing code. You now trust: the Lean proof that the checker
+is correct (`checkProofArr_unsat`), the Lean *compiler* that turned it into machine code, and the
+(unverified) parser. This is exactly the trust model of real verified checkers like `cake_lpr` — and being
+able to state precisely *which* of these you're trusting, and why each is reasonable, is the actual
+expertise. (Note the asymmetry that keeps it safe: a parser or checker bug can only make it *refuse* a good
+certificate, never *accept* a bad one — soundness is one-directional.)
+
+**A small redemption arc worth noticing.** The array-backed database was built, proved sound, then shown
+*useless* for the string-literal tier (elaboration, not runtime, was the bottleneck there). At this top
+rung it becomes *essential*: reading from a file means there's no literal to elaborate, so runtime is the
+whole cost, and a List database's O(n²) would never finish 2.3M steps. The same code was worthless one rung
+down and load-bearing one rung up. The lesson — *the right tool depends on where the cost actually is* — is
+the same one as "measure before you optimize," seen from the other side.
+
+**Where even this stops.** The checker is still RUP-only, and the parser reads the whole certificate into
+memory (truly vast proofs would need streaming). And one rung beyond *any* of this lies the limit no
+engineering removes: Gödel's incompleteness. A checker can certify any *particular* finite proof you hand
+it, but no consistent system of this kind can prove every true statement — including, famously, its own
+consistency. The ladder of "verify bigger and bigger finite things" is endless and useful; it never
+reaches "verify everything," and knowing the difference is the last and most important piece of judgment.
 
 ---
 

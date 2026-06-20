@@ -4,3 +4,7 @@ defaultTargets = ["LeanVerificationJourney"]
 
 [[lean_lib]]
 name = "LeanVerificationJourney"
+
+[[lean_exe]]
+name = "lratcheck"
+root = "Main"

@@ -4,3 +4,4 @@ import LeanVerificationJourney.Basic
 import LeanVerificationJourney.Lrat
 import LeanVerificationJourney.LratW24
 import LeanVerificationJourney.LratScale
+import LeanVerificationJourney.LratArray

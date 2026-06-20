@@ -75,11 +75,35 @@ The cost, precisely located: reading a `String` rests on Lean's classical String
 adds `Classical.choice`. (An array-backed database is the textbook "scale" move and it's sound, but it
 gave ~0 speedup here — runtime was never the bottleneck. *Measure before optimizing.*)
 
-**Honest boundary.** The checker handles RUP steps (the common case; these certificates are RUP-only) but
-not yet RAT steps. The remaining ceiling is the `String` literal's own size: ~millions of steps (S(4) ≤ 44's
-~5M, W(2,5) ≤ 178's ~600k) would mean tens-of-MB source files — impractical to embed. Reaching those needs
-reading the certificate from a *file* at runtime (what standalone checkers like `cake_lpr` do), a different
-architecture from a self-contained Lean theorem. None of this is a soundness gap: the proof covers any size.
+## The top of the ladder — a verified checker as a *program*
+
+Past a few hundred thousand steps, no certificate fits as a `String` literal either (tens of MB of
+source). At that point a self-contained Lean *theorem* is the wrong shape entirely: the kernel can't do
+file IO, and the literal can't be elaborated. So the top rung is a different **kind** of artifact — the
+proven checker, compiled to a program ([`Main.lean`](Main.lean), `lake build lratcheck`), that reads the
+certificate from a **file** and runs the Array-backed `checkProofArr`
+([`LratArray.lean`](LeanVerificationJourney/LratArray.lean), O(n), soundness inherited from the List
+checker via refinement — axioms `propext, Quot.sound`).
+
+| result | steps | cert size | `lratcheck` time |
+|---|---|---|---|
+| **W(2,5) ≤ 178** | 607,312 | 144 MB | ~47 s |
+| **S(4) ≤ 44** | 2,276,189 | 449 MB | ~3 min |
+
+Both are *known* combinatorial numbers, and both are far beyond anything embeddable as a theorem — yet
+the Lean-proven checker dispatches them. **This is also where the array database finally earns its keep:**
+useless when elaboration was the bottleneck, essential once runtime is (a List database would be O(n²)).
+
+The trust model genuinely shifts here, and it's worth being precise: the output `s VERIFIED` is *not* a
+kernel-checked proof object — it's the result of *running a proven-correct program*. You trust the Lean
+proof of `checkProofArr_unsat`, the Lean compiler, and the (untrusted) parser — exactly the trust model of
+standalone verified checkers like `cake_lpr`. A parser bug can still only cause a *refusal*, never a false
+`VERIFIED`. Try it: `lake build lratcheck && ./.lake/build/bin/lratcheck samples_w33.cert` (a bundled
+6179-step W(3,3) ≤ 27 certificate).
+
+**Honest boundary.** The checker is RUP-only (no RAT steps yet). The parser holds the whole token list in
+memory, so truly enormous certificates would want streaming I/O. Neither is a soundness gap — the proof
+covers any size; these are engineering limits.
 
 ## Understanding it (the point is the ideas, not the syntax)
 
@@ -95,7 +119,7 @@ See [SETUP.md](SETUP.md) — install Lean 4, build, and open in VS Code to see t
 ## Why public
 
 The visibility is the point: this is a portfolio that grows as the skill grows. Roadmap ahead —
-RAT-step support, file-read certificates for true scale (S(4)/W(2,5)), then a lemma from a 1D fluid
+RAT-step support, streaming I/O for arbitrarily large certificates, then a lemma from a 1D fluid
 blow-up analysis, then small Mathlib contributions.
 
 MIT licensed.
