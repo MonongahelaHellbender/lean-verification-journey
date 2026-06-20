@@ -201,6 +201,13 @@ that conservative boundary composition preserves consistency. In plain English: 
 not allowed to say "we claim production readiness" and "we do not claim production readiness" at the same
 time, and composing evidence cannot create that contradiction unless an input was already contradictory.
 
+It also starts formalizing provenance. A sourced boundary now carries minimal source metadata — artifact
+recorded, reproducing command recorded, reproducibility flag recorded — and Lean proves the no-anonymous-
+promotion rule: without a valid source record, a claim is not promotable. Conservative composition cannot
+manufacture valid provenance either; if a composed sourced claim promotes, both inputs had valid source
+metadata. This does **not** prove the outside world is true. It proves the dashboard grammar cannot treat
+an unsourced claim as earned evidence.
+
 ## Understanding it (the point is the ideas, not the syntax)
 
 - [`UNDERSTANDING.md`](UNDERSTANDING.md) — a concept-first primer on what formal verification *is* and

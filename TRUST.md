@@ -87,7 +87,9 @@ asset:
   out of weaker inputs. It also proves the negative-results rule: blocked/refused statuses remain
   non-promotable under aggregation. The newest layer is claim-boundary consistency: each artifact has a
   `doesClaim` and `doesNotClaim` surface, and Lean proves the Shield boundary is consistent and that
-  conservative composition preserves consistency.)*
+  conservative composition preserves consistency. The provenance layer begins the next step: a sourced
+  boundary carries artifact/command/reproducibility metadata, and Lean proves that an invalid source
+  record cannot support a promotable claim.)*
 
 In every case the judgment is the same: *Is there a small, checkable artifact? And do I trust the
 checker — at which named rung?*

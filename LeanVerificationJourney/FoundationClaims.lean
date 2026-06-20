@@ -428,6 +428,118 @@ theorem shield_boundary_self_composition_consistent :
   exact compose_boundary_consistent shieldPrivateUseBoundary shieldPrivateUseBoundary
     shield_boundary_consistent shield_boundary_consistent
 
+/-- A coarse source taxonomy for Foundation evidence. This does not certify the
+    world; it records what kind of artifact a claim is backed by. -/
+inductive SourceKind where
+  | publicLeanRepo
+  | localPrivateArtifact
+  | generatedReport
+  | externalDataset
+  deriving DecidableEq, Repr
+
+/-- The minimal provenance fields a Foundation claim needs before it can be
+    treated as promotable: an artifact was recorded, the reproducing command was
+    recorded, and the artifact is marked reproducible by the lane's checker. -/
+structure EvidenceSource where
+  kind : SourceKind
+  artifactRecorded : Bool
+  commandRecorded : Bool
+  reproducible : Bool
+
+def SourceValid (s : EvidenceSource) : Prop :=
+  s.artifactRecorded = true ∧ s.commandRecorded = true ∧ s.reproducible = true
+
+/-- A boundary plus the source metadata that backs it. -/
+structure SourcedBoundary where
+  boundary : ClaimBoundary
+  source : EvidenceSource
+
+/-- A claim is promotable only when the boundary is internally consistent, the
+    claim is actually made, and the source metadata is valid. -/
+def SourcedClaimPromotable (b : SourcedBoundary) (c : Claim) : Prop :=
+  BoundaryConsistent b.boundary ∧ Allows b.boundary.doesClaim c ∧ SourceValid b.source
+
+/-- The source for this public Lean module: the artifact, command, and
+    reproducibility check are all explicit (`lake build`). -/
+def leanFoundationClaimsSource : EvidenceSource :=
+  { kind := SourceKind.publicLeanRepo
+    artifactRecorded := true
+    commandRecorded := true
+    reproducible := true }
+
+def shieldPrivateUseSourcedBoundary : SourcedBoundary :=
+  { boundary := shieldPrivateUseBoundary
+    source := leanFoundationClaimsSource }
+
+theorem lean_foundation_claims_source_valid :
+    SourceValid leanFoundationClaimsSource := by
+  exact ⟨rfl, rfl, rfl⟩
+
+theorem shield_sourced_private_daily_use_promotable :
+    SourcedClaimPromotable shieldPrivateUseSourcedBoundary Claim.privateDailyUse := by
+  exact ⟨shield_boundary_consistent, shield_boundary_claims_private_daily_use,
+    lean_foundation_claims_source_valid⟩
+
+/-- If the source is not valid, the claim cannot be promotable, even if the
+    boundary says it is claimed. This is the "no anonymous promotion" rule. -/
+theorem invalid_source_not_promotable (b : SourcedBoundary) (c : Claim)
+    (h : ¬ SourceValid b.source) :
+    ¬ SourcedClaimPromotable b c := by
+  intro hp
+  exact h hp.2.2
+
+/-- Conservative source composition: an aggregate source is valid only when
+    both source records carry each required bit. -/
+def composeSources (a b : EvidenceSource) : EvidenceSource :=
+  { kind := a.kind
+    artifactRecorded := a.artifactRecorded && b.artifactRecorded
+    commandRecorded := a.commandRecorded && b.commandRecorded
+    reproducible := a.reproducible && b.reproducible }
+
+def composeSourcedBoundaries (a b : SourcedBoundary) : SourcedBoundary :=
+  { boundary := composeBoundaries a.boundary b.boundary
+    source := composeSources a.source b.source }
+
+theorem composed_source_valid_requires_left (a b : EvidenceSource) :
+    SourceValid (composeSources a b) → SourceValid a := by
+  intro h
+  exact ⟨and_true_left (by simpa [SourceValid, composeSources] using h.1),
+    and_true_left (by simpa [SourceValid, composeSources] using h.2.1),
+    and_true_left (by simpa [SourceValid, composeSources] using h.2.2)⟩
+
+theorem composed_source_valid_requires_right (a b : EvidenceSource) :
+    SourceValid (composeSources a b) → SourceValid b := by
+  intro h
+  exact ⟨and_true_right (by simpa [SourceValid, composeSources] using h.1),
+    and_true_right (by simpa [SourceValid, composeSources] using h.2.1),
+    and_true_right (by simpa [SourceValid, composeSources] using h.2.2)⟩
+
+/-- Source validity cannot be manufactured by aggregation. If a composed
+    evidence packet is valid, both of its inputs were already source-valid. -/
+theorem composed_source_valid_requires_both (a b : EvidenceSource) :
+    SourceValid (composeSources a b) → SourceValid a ∧ SourceValid b := by
+  intro h
+  exact ⟨composed_source_valid_requires_left a b h,
+    composed_source_valid_requires_right a b h⟩
+
+/-- A composed sourced claim can promote only when both inputs had valid source
+    metadata. This is the provenance analogue of conservative gate
+    composition. -/
+theorem composed_sourced_claim_requires_both_sources (a b : SourcedBoundary) (c : Claim) :
+    SourcedClaimPromotable (composeSourcedBoundaries a b) c →
+      SourceValid a.source ∧ SourceValid b.source := by
+  intro h
+  exact composed_source_valid_requires_both a.source b.source h.2.2
+
+/-- The current sourced Shield boundary stays promotable for private daily use
+    under conservative self-composition, and the proof still uses explicit
+    source validity rather than anonymous dashboard state. -/
+theorem shield_sourced_self_composition_private_daily_use_promotable :
+    SourcedClaimPromotable
+      (composeSourcedBoundaries shieldPrivateUseSourcedBoundary shieldPrivateUseSourcedBoundary)
+      Claim.privateDailyUse := by
+  exact ⟨shield_boundary_self_composition_consistent, rfl, ⟨rfl, rfl, rfl⟩⟩
+
 #check @shield_private_use_gate_earned
 #check @shield_public_release_not_earned
 #check @shield_private_use_block_safe
@@ -446,6 +558,11 @@ theorem shield_boundary_self_composition_consistent :
 #check @shield_boundary_consistent
 #check @compose_boundary_consistent
 #check @shield_boundary_self_composition_consistent
+#check @shield_sourced_private_daily_use_promotable
+#check @invalid_source_not_promotable
+#check @composed_source_valid_requires_both
+#check @composed_sourced_claim_requires_both_sources
+#check @shield_sourced_self_composition_private_daily_use_promotable
 #print axioms shield_private_use_block_safe
 #print axioms production_authorization_requires_gate
 #print axioms checkpoint_authorization_requires_gate
@@ -457,3 +574,7 @@ theorem shield_boundary_self_composition_consistent :
 #print axioms refused_left_not_promotable
 #print axioms shield_boundary_consistent
 #print axioms compose_boundary_consistent
+#print axioms shield_sourced_private_daily_use_promotable
+#print axioms invalid_source_not_promotable
+#print axioms composed_source_valid_requires_both
+#print axioms composed_sourced_claim_requires_both_sources
