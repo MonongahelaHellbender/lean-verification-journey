@@ -727,6 +727,95 @@ theorem shield_current_self_composition_private_daily_use_promotable :
   exact ⟨shield_boundary_self_composition_consistent, rfl,
     ⟨⟨⟨rfl, rfl, rfl⟩, rfl, rfl⟩, rfl⟩⟩
 
+/-- A tiny artifact identity universe for the public proof portfolio. In the
+    private Foundation repo this corresponds to concrete paths/hashes; here the
+    important thing is the equality check, not the encoding. -/
+inductive ArtifactId where
+  | foundationClaimsLean
+  | shieldReport
+  | omdPacket
+  | aggregate
+  deriving DecidableEq, Repr
+
+/-- A current source plus the artifact the dashboard claim cites and the
+    artifact the checker actually checked. -/
+structure ArtifactBoundSource where
+  source : ExpiringEvidenceSource
+  claimedArtifact : ArtifactId
+  checkedArtifact : ArtifactId
+
+def ArtifactMatches (s : ArtifactBoundSource) : Prop :=
+  s.claimedArtifact = s.checkedArtifact
+
+def ArtifactSourceValid (s : ArtifactBoundSource) : Prop :=
+  CurrentSourceValid s.source ∧ ArtifactMatches s
+
+structure ArtifactSourcedBoundary where
+  boundary : ClaimBoundary
+  source : ArtifactBoundSource
+
+def ArtifactClaimPromotable (b : ArtifactSourcedBoundary) (c : Claim) : Prop :=
+  BoundaryConsistent b.boundary ∧ Allows b.boundary.doesClaim c ∧ ArtifactSourceValid b.source
+
+def leanFoundationClaimsArtifactSource : ArtifactBoundSource :=
+  { source := leanFoundationClaimsCurrentSource
+    claimedArtifact := ArtifactId.foundationClaimsLean
+    checkedArtifact := ArtifactId.foundationClaimsLean }
+
+def shieldPrivateUseArtifactBoundary : ArtifactSourcedBoundary :=
+  { boundary := shieldPrivateUseBoundary
+    source := leanFoundationClaimsArtifactSource }
+
+theorem lean_foundation_claims_artifact_source_valid :
+    ArtifactSourceValid leanFoundationClaimsArtifactSource := by
+  exact ⟨lean_foundation_claims_current_source_valid, rfl⟩
+
+theorem shield_artifact_private_daily_use_promotable :
+    ArtifactClaimPromotable shieldPrivateUseArtifactBoundary Claim.privateDailyUse := by
+  exact ⟨shield_boundary_consistent, shield_boundary_claims_private_daily_use,
+    lean_foundation_claims_artifact_source_valid⟩
+
+/-- If the claim cites one artifact but the checker checked another, the claim
+    cannot be artifact-promotable. This is the source-mismatch refusal rule. -/
+theorem mismatched_artifact_not_promotable (b : ArtifactSourcedBoundary) (c : Claim)
+    (h : b.source.claimedArtifact ≠ b.source.checkedArtifact) :
+    ¬ ArtifactClaimPromotable b c := by
+  intro hp
+  exact h hp.2.2.2
+
+/-- Artifact validity implies the underlying current source is valid. This lets
+    downstream rules reuse all expiry/freshness/source gates. -/
+theorem artifact_source_valid_implies_current (s : ArtifactBoundSource) :
+    ArtifactSourceValid s → CurrentSourceValid s.source := by
+  intro h
+  exact h.1
+
+/-- A composed artifact source carries both input artifact sources explicitly.
+    The aggregate artifact may be new, but both input artifacts must still be
+    valid; no dashboard aggregate can hide a mismatched input. -/
+structure CompositeArtifactSource where
+  left : ArtifactBoundSource
+  right : ArtifactBoundSource
+  aggregate : ArtifactBoundSource
+
+def CompositeArtifactSourceValid (s : CompositeArtifactSource) : Prop :=
+  ArtifactSourceValid s.left ∧ ArtifactSourceValid s.right ∧ ArtifactSourceValid s.aggregate
+
+theorem composite_artifact_source_requires_left (s : CompositeArtifactSource) :
+    CompositeArtifactSourceValid s → ArtifactSourceValid s.left := by
+  intro h
+  exact h.1
+
+theorem composite_artifact_source_requires_right (s : CompositeArtifactSource) :
+    CompositeArtifactSourceValid s → ArtifactSourceValid s.right := by
+  intro h
+  exact h.2.1
+
+theorem composite_artifact_source_requires_inputs (s : CompositeArtifactSource) :
+    CompositeArtifactSourceValid s → ArtifactSourceValid s.left ∧ ArtifactSourceValid s.right := by
+  intro h
+  exact ⟨h.1, h.2.1⟩
+
 #check @shield_private_use_gate_earned
 #check @shield_public_release_not_earned
 #check @shield_private_use_block_safe
@@ -761,6 +850,10 @@ theorem shield_current_self_composition_private_daily_use_promotable :
 #check @composed_current_claim_requires_both_sources
 #check @refresh_source_current_if_source_and_version_valid
 #check @shield_current_self_composition_private_daily_use_promotable
+#check @shield_artifact_private_daily_use_promotable
+#check @mismatched_artifact_not_promotable
+#check @artifact_source_valid_implies_current
+#check @composite_artifact_source_requires_inputs
 #print axioms shield_private_use_block_safe
 #print axioms production_authorization_requires_gate
 #print axioms checkpoint_authorization_requires_gate
@@ -785,3 +878,7 @@ theorem shield_current_self_composition_private_daily_use_promotable :
 #print axioms composed_current_source_requires_both
 #print axioms composed_current_claim_requires_both_sources
 #print axioms refresh_source_current_if_source_and_version_valid
+#print axioms shield_artifact_private_daily_use_promotable
+#print axioms mismatched_artifact_not_promotable
+#print axioms artifact_source_valid_implies_current
+#print axioms composite_artifact_source_requires_inputs

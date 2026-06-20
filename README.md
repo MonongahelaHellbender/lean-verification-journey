@@ -219,6 +219,12 @@ that aggregation cannot manufacture unexpired authority, and that a valid versio
 current again through an explicit refresh check. This is the rule Foundation wants in production: keep old
 evidence visible, but require a new check before it authorizes today's recommendation.
 
+The artifact-identity layer closes the most obvious provenance loophole: checking one artifact while
+claiming another. `ArtifactBoundSource` records both the artifact a claim cites and the artifact the
+checker actually checked. Lean proves the mismatch refusal rule: if those identities differ, the claim is
+not promotable. In a private deployment those identities can be concrete paths, hashes, or result-block
+IDs; in Lean the important invariant is equality of the cited and checked artifact.
+
 ## Understanding it (the point is the ideas, not the syntax)
 
 - [`UNDERSTANDING.md`](UNDERSTANDING.md) — a concept-first primer on what formal verification *is* and
