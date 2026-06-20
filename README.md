@@ -195,6 +195,12 @@ Finally, it formalizes the negative-results rule. Foundation statuses include `e
 disappear into an earned aggregate. That is the machine-checked version of "failed gates stay visible as
 evidence, but never as promotions."
 
+The newest layer is claim-boundary consistency itself. A result block has a `doesClaim` surface and a
+`doesNotClaim` surface; Lean proves the current Shield private-use boundary is internally consistent, and
+that conservative boundary composition preserves consistency. In plain English: a dashboard aggregate is
+not allowed to say "we claim production readiness" and "we do not claim production readiness" at the same
+time, and composing evidence cannot create that contradiction unless an input was already contradictory.
+
 ## Understanding it (the point is the ideas, not the syntax)
 
 - [`UNDERSTANDING.md`](UNDERSTANDING.md) — a concept-first primer on what formal verification *is* and

@@ -310,6 +310,124 @@ theorem omd_blocked_not_promotable :
     ¬ Promotable omdHeldoutBlockedStatus := by
   simp [omdHeldoutBlockedStatus, Promotable]
 
+/-- A finite menu of Foundation claims that public reports and dashboards may
+    either make or explicitly refuse. The point is not that this list is final;
+    it is that the claim/refusal relation is checkable. -/
+inductive Claim where
+  | privateDailyUse
+  | publicRelease
+  | production
+  | checkpoint
+  | securityCertified
+  | omdCommercial
+  deriving DecidableEq, Repr
+
+/-- A claim set is a decidable predicate over the current finite claim menu. -/
+abbrev ClaimSet := Claim → Bool
+
+def Allows (s : ClaimSet) (c : Claim) : Prop := s c = true
+
+def Refuses (s : ClaimSet) (c : Claim) : Prop := s c = true
+
+/-- The Foundation result-block language has two surfaces: what this artifact
+    claims, and what it explicitly does not claim. A boundary is consistent
+    when no claim appears on both surfaces. -/
+structure ClaimBoundary where
+  doesClaim : ClaimSet
+  doesNotClaim : ClaimSet
+
+def BoundaryConsistent (b : ClaimBoundary) : Prop :=
+  ∀ c, ¬ (Allows b.doesClaim c ∧ Refuses b.doesNotClaim c)
+
+/-- Shield's current public posture in claim-boundary form: private daily use
+    is claimed; public release, production, checkpoint authority, security
+    certification, and OMD commercial readiness are explicitly refused. -/
+def shieldPrivateUseBoundary : ClaimBoundary :=
+  { doesClaim := fun
+      | Claim.privateDailyUse => true
+      | _ => false
+    doesNotClaim := fun
+      | Claim.privateDailyUse => false
+      | Claim.publicRelease => true
+      | Claim.production => true
+      | Claim.checkpoint => true
+      | Claim.securityCertified => true
+      | Claim.omdCommercial => true }
+
+theorem shield_boundary_claims_private_daily_use :
+    Allows shieldPrivateUseBoundary.doesClaim Claim.privateDailyUse := by
+  rfl
+
+theorem shield_boundary_refuses_production :
+    Refuses shieldPrivateUseBoundary.doesNotClaim Claim.production := by
+  rfl
+
+theorem shield_boundary_refuses_checkpoint :
+    Refuses shieldPrivateUseBoundary.doesNotClaim Claim.checkpoint := by
+  rfl
+
+theorem shield_boundary_refuses_security_certification :
+    Refuses shieldPrivateUseBoundary.doesNotClaim Claim.securityCertified := by
+  rfl
+
+theorem shield_boundary_consistent :
+    BoundaryConsistent shieldPrivateUseBoundary := by
+  intro c h
+  cases c <;> cases h with
+  | intro hc hn => simp [Allows, Refuses, shieldPrivateUseBoundary] at hc hn
+
+/-- Conservative claim composition: an aggregate claims only what both inputs
+    claim, and it refuses anything either input refuses. -/
+def intersectClaims (a b : ClaimSet) : ClaimSet := fun c => a c && b c
+
+def unionRefusals (a b : ClaimSet) : ClaimSet := fun c => a c || b c
+
+def composeBoundaries (a b : ClaimBoundary) : ClaimBoundary :=
+  { doesClaim := intersectClaims a.doesClaim b.doesClaim
+    doesNotClaim := unionRefusals a.doesNotClaim b.doesNotClaim }
+
+theorem intersect_allows_left (a b : ClaimSet) (c : Claim) :
+    Allows (intersectClaims a b) c → Allows a c := by
+  intro h
+  exact and_true_left (by simpa [Allows, intersectClaims] using h)
+
+theorem intersect_allows_right (a b : ClaimSet) (c : Claim) :
+    Allows (intersectClaims a b) c → Allows b c := by
+  intro h
+  exact and_true_right (by simpa [Allows, intersectClaims] using h)
+
+theorem union_refuses_cases (a b : ClaimSet) (c : Claim) :
+    Refuses (unionRefusals a b) c → Refuses a c ∨ Refuses b c := by
+  intro h
+  cases ha : a c <;> cases hb : b c <;> simp [Refuses, unionRefusals, ha, hb] at h ⊢
+
+/-- Conservative composition preserves boundary consistency. If the aggregate
+    claims something, both inputs claimed it; if the aggregate refuses it, at
+    least one input refused it. Thus any inconsistency would already have
+    existed in one of the inputs. -/
+theorem compose_boundary_consistent (a b : ClaimBoundary)
+    (ha : BoundaryConsistent a) (hb : BoundaryConsistent b) :
+    BoundaryConsistent (composeBoundaries a b) := by
+  intro c h
+  have hClaimA : Allows a.doesClaim c :=
+    intersect_allows_left a.doesClaim b.doesClaim c (by
+      simpa [composeBoundaries] using h.1)
+  have hClaimB : Allows b.doesClaim c :=
+    intersect_allows_right a.doesClaim b.doesClaim c (by
+      simpa [composeBoundaries] using h.1)
+  have hRefuse := union_refuses_cases a.doesNotClaim b.doesNotClaim c (by
+      simpa [composeBoundaries] using h.2)
+  cases hRefuse with
+  | inl hRefuseA => exact ha c ⟨hClaimA, hRefuseA⟩
+  | inr hRefuseB => exact hb c ⟨hClaimB, hRefuseB⟩
+
+/-- Even after conservative self-composition, the current Shield boundary stays
+    internally consistent. -/
+theorem shield_boundary_self_composition_consistent :
+    BoundaryConsistent (composeBoundaries shieldPrivateUseBoundary shieldPrivateUseBoundary) := by
+  exact compose_boundary_consistent shieldPrivateUseBoundary shieldPrivateUseBoundary
+    shield_boundary_consistent shield_boundary_consistent
+
 #check @shield_private_use_gate_earned
 #check @shield_public_release_not_earned
 #check @shield_private_use_block_safe
@@ -325,6 +443,9 @@ theorem omd_blocked_not_promotable :
 #check @blocked_left_not_promotable
 #check @refused_left_not_promotable
 #check @omd_blocked_not_promotable
+#check @shield_boundary_consistent
+#check @compose_boundary_consistent
+#check @shield_boundary_self_composition_consistent
 #print axioms shield_private_use_block_safe
 #print axioms production_authorization_requires_gate
 #print axioms checkpoint_authorization_requires_gate
@@ -334,3 +455,5 @@ theorem omd_blocked_not_promotable :
 #print axioms combined_promotable_requires_both
 #print axioms blocked_left_not_promotable
 #print axioms refused_left_not_promotable
+#print axioms shield_boundary_consistent
+#print axioms compose_boundary_consistent
