@@ -108,13 +108,29 @@ standalone verified checkers like `cake_lpr`. A parser bug can still only cause 
 `lratcheck` unchanged — it only ever sees a CNF and a certificate, never the combinatorics. As a
 demonstration, **R(3,3) = 6** (the classic "any party of six has three mutual friends or three mutual
 strangers") and **R(3,4) = 9** were generated, solved, and certified by the same pipeline; the latter is
-bundled as `samples_r34.cert` (an 8635-step proof). All the certificates here are RUP-only (the `glucose`
-solver emits DRUP proofs), which is why the checker needs no RAT support yet — a solver that emitted RAT
-steps would be the thing that changes that.
+bundled as `samples_r34.cert` (an 8635-step proof). The certificates produced here are RUP-only (the
+`glucose` solver emits DRUP proofs).
 
-**Honest boundary.** The checker is RUP-only (no RAT steps yet). The parser holds the whole token list in
-memory, so truly enormous certificates would want streaming I/O. Neither is a soundness gap — the proof
-covers any size; these are engineering limits.
+## Completing it — RAT, the general case ([`LratRat.lean`](LeanVerificationJourney/LratRat.lean))
+
+RUP clauses are *implied* by the formula. The other rule SAT solvers use — **RAT** (resolution asymmetric
+tautology, the basis of extended resolution / blocked clauses, used in proofs like Schur-5, Keller-7, the
+Pythagorean triples) — adds clauses that are **not implied**: they can change the set of models. They're
+still *satisfiability-preserving*, which is all an UNSAT proof needs, but that's a weaker and subtler
+invariant, so the soundness argument is different.
+
+`LratRat.lean` proves it: `rat_add_sat` is the classic flipped-assignment argument (if an assignment
+satisfies the database but falsifies a RAT clause on pivot `l`, flip `l` — the RAT condition guarantees
+the result still satisfies everything). On top of it, `checkProofGen_unsat` is a verified checker over a
+mixed list of **RUP + RAT** steps — i.e. a general DRAT/LRAT proof. All of it has trusted base
+`propext, Quot.sound` (no `Classical.choice`, no compiler). With this, the checker's *soundness* covers
+any SAT certificate; the only remaining piece for an end-to-end RAT file run is the (untrusted) parser
+that turns LRAT RAT-lines into step data.
+
+**Honest boundary.** RAT soundness is proven and the general checker is built; wiring RAT-line *parsing*
+into `lratcheck` is the remaining (mechanical, untrusted) plumbing. The parser also holds the whole token
+list in memory, so truly enormous certificates would want streaming I/O. Neither is a soundness gap — the
+proofs cover any size; these are engineering limits.
 
 ## Understanding it (the point is the ideas, not the syntax)
 
@@ -130,7 +146,7 @@ See [SETUP.md](SETUP.md) — install Lean 4, build, and open in VS Code to see t
 ## Why public
 
 The visibility is the point: this is a portfolio that grows as the skill grows. Roadmap ahead —
-RAT-step support, streaming I/O for arbitrarily large certificates, then a lemma from a 1D fluid
-blow-up analysis, then small Mathlib contributions.
+RAT-line parsing into `lratcheck`, streaming I/O for arbitrarily large certificates, then a lemma from a
+1D fluid blow-up analysis, then small Mathlib contributions.
 
 MIT licensed.
