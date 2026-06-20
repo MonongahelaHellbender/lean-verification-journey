@@ -825,6 +825,7 @@ structure FoundationResultRow where
   source : ExpiringEvidenceSource
   claimedArtifact : ArtifactId
   checkedArtifact : ArtifactId
+  status : EvidenceStatus
   promotionAllowed : Bool
 
 def rowArtifactSource (r : FoundationResultRow) : ArtifactBoundSource :=
@@ -839,7 +840,7 @@ def rowArtifactBoundary (r : FoundationResultRow) : ArtifactSourcedBoundary :=
 /-- A schema row is safe for a particular claim when the promotion flag, if set,
     is backed by the full artifact-bound claim grammar. -/
 def RowSafeForClaim (r : FoundationResultRow) (c : Claim) : Prop :=
-  r.promotionAllowed = true → ArtifactClaimPromotable (rowArtifactBoundary r) c
+  r.promotionAllowed = true → Promotable r.status ∧ ArtifactClaimPromotable (rowArtifactBoundary r) c
 
 /-- If a safe row allows promotion, then the complete artifact-bound claim is
     available: consistent boundary, made claim, current source, unexpired source,
@@ -847,7 +848,12 @@ def RowSafeForClaim (r : FoundationResultRow) (c : Claim) : Prop :=
 theorem row_promotion_implies_artifact_claim (r : FoundationResultRow) (c : Claim)
     (hSafe : RowSafeForClaim r c) (hPromote : r.promotionAllowed = true) :
     ArtifactClaimPromotable (rowArtifactBoundary r) c := by
-  exact hSafe hPromote
+  exact (hSafe hPromote).2
+
+theorem row_promotion_implies_status_promotable (r : FoundationResultRow) (c : Claim)
+    (hSafe : RowSafeForClaim r c) (hPromote : r.promotionAllowed = true) :
+    Promotable r.status := by
+  exact (hSafe hPromote).1
 
 theorem row_promotion_implies_artifact_match (r : FoundationResultRow) (c : Claim)
     (hSafe : RowSafeForClaim r c) (hPromote : r.promotionAllowed = true) :
@@ -875,17 +881,50 @@ theorem invalid_current_source_row_cannot_promote (r : FoundationResultRow) (c :
   intro hPromote
   exact hInvalid (row_promotion_implies_current_source r c hSafe hPromote)
 
+/-- If the row status is not promotable, a safe row cannot set
+    `promotionAllowed = true`. -/
+theorem non_promotable_status_row_cannot_promote (r : FoundationResultRow) (c : Claim)
+    (hSafe : RowSafeForClaim r c) (hStatus : ¬ Promotable r.status) :
+    r.promotionAllowed ≠ true := by
+  intro hPromote
+  exact hStatus (row_promotion_implies_status_promotable r c hSafe hPromote)
+
+theorem review_row_cannot_promote (r : FoundationResultRow) (c : Claim)
+    (hSafe : RowSafeForClaim r c) (hStatus : r.status = EvidenceStatus.review) :
+    r.promotionAllowed ≠ true := by
+  apply non_promotable_status_row_cannot_promote r c hSafe
+  intro h
+  rw [hStatus] at h
+  exact h
+
+theorem blocked_row_cannot_promote (r : FoundationResultRow) (c : Claim)
+    (hSafe : RowSafeForClaim r c) (hStatus : r.status = EvidenceStatus.blocked) :
+    r.promotionAllowed ≠ true := by
+  apply non_promotable_status_row_cannot_promote r c hSafe
+  intro h
+  rw [hStatus] at h
+  exact h
+
+theorem refused_row_cannot_promote (r : FoundationResultRow) (c : Claim)
+    (hSafe : RowSafeForClaim r c) (hStatus : r.status = EvidenceStatus.refused) :
+    r.promotionAllowed ≠ true := by
+  apply non_promotable_status_row_cannot_promote r c hSafe
+  intro h
+  rw [hStatus] at h
+  exact h
+
 def shieldPrivateUseResultRow : FoundationResultRow :=
   { boundary := shieldPrivateUseBoundary
     source := leanFoundationClaimsCurrentSource
     claimedArtifact := ArtifactId.foundationClaimsLean
     checkedArtifact := ArtifactId.foundationClaimsLean
+    status := EvidenceStatus.earned
     promotionAllowed := true }
 
 theorem shield_private_use_row_safe :
     RowSafeForClaim shieldPrivateUseResultRow Claim.privateDailyUse := by
   intro h
-  exact shield_artifact_private_daily_use_promotable
+  exact ⟨True.intro, shield_artifact_private_daily_use_promotable⟩
 
 theorem shield_private_use_row_promotes_artifact_claim :
     ArtifactClaimPromotable (rowArtifactBoundary shieldPrivateUseResultRow) Claim.privateDailyUse := by
@@ -931,10 +970,15 @@ theorem shield_private_use_row_promotes_artifact_claim :
 #check @artifact_source_valid_implies_current
 #check @composite_artifact_source_requires_inputs
 #check @row_promotion_implies_artifact_claim
+#check @row_promotion_implies_status_promotable
 #check @row_promotion_implies_artifact_match
 #check @row_promotion_implies_current_source
 #check @mismatched_row_cannot_promote
 #check @invalid_current_source_row_cannot_promote
+#check @non_promotable_status_row_cannot_promote
+#check @review_row_cannot_promote
+#check @blocked_row_cannot_promote
+#check @refused_row_cannot_promote
 #check @shield_private_use_row_promotes_artifact_claim
 #print axioms shield_private_use_block_safe
 #print axioms production_authorization_requires_gate
@@ -965,7 +1009,12 @@ theorem shield_private_use_row_promotes_artifact_claim :
 #print axioms artifact_source_valid_implies_current
 #print axioms composite_artifact_source_requires_inputs
 #print axioms row_promotion_implies_artifact_claim
+#print axioms row_promotion_implies_status_promotable
 #print axioms row_promotion_implies_artifact_match
 #print axioms row_promotion_implies_current_source
 #print axioms mismatched_row_cannot_promote
 #print axioms invalid_current_source_row_cannot_promote
+#print axioms non_promotable_status_row_cannot_promote
+#print axioms review_row_cannot_promote
+#print axioms blocked_row_cannot_promote
+#print axioms refused_row_cannot_promote
