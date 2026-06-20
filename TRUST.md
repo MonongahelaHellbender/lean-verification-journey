@@ -82,7 +82,9 @@ asset:
   production statuses; a small theorem should make it impossible to confuse them. *(Started — see
   [`FoundationClaims.lean`](LeanVerificationJourney/FoundationClaims.lean): private daily use can be
   earned while public release, production, and checkpoint authority remain refused; the core safety
-  theorems have no axioms.)*
+  theorems have no axioms. The same module now proves a conservative composition rule: combining bounded
+  evidence blocks by intersecting gates cannot create public-release, production, or checkpoint authority
+  out of weaker inputs.)*
 
 In every case the judgment is the same: *Is there a small, checkable artifact? And do I trust the
 checker — at which named rung?*

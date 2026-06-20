@@ -184,6 +184,12 @@ The key safety theorems do **not depend on any axioms**. This is the first forma
 claim boundary: not a toy domain, but the project's own rule that review-ready evidence must not silently
 turn into production or public-release authority.
 
+The module also formalizes Foundation's conservative evidence-composition rule: when multiple bounded
+result blocks are combined, gates compose by **intersection**, not union. Lean proves that composition
+cannot manufacture public-release or production prerequisites, and cannot create production/checkpoint
+authorization when neither input had it. This is the dashboard/evidence-OS anti-overclaim invariant in
+kernel-checked form.
+
 ## Understanding it (the point is the ideas, not the syntax)
 
 - [`UNDERSTANDING.md`](UNDERSTANDING.md) — a concept-first primer on what formal verification *is* and
