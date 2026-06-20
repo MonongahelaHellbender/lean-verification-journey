@@ -89,7 +89,8 @@ asset:
   `doesClaim` and `doesNotClaim` surface, and Lean proves the Shield boundary is consistent and that
   conservative composition preserves consistency. The provenance layer begins the next step: a sourced
   boundary carries artifact/command/reproducibility metadata, and Lean proves that an invalid source
-  record cannot support a promotable claim.)*
+  record cannot support a promotable claim. The freshness layer tightens this again: stale or unversioned
+  evidence cannot support a current promotable claim.)*
 
 In every case the judgment is the same: *Is there a small, checkable artifact? And do I trust the
 checker — at which named rung?*

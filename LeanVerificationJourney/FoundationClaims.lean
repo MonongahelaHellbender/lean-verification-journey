@@ -540,6 +540,97 @@ theorem shield_sourced_self_composition_private_daily_use_promotable :
       Claim.privateDailyUse := by
   exact ⟨shield_boundary_self_composition_consistent, rfl, ⟨rfl, rfl, rfl⟩⟩
 
+/-- A stricter source record for current operational claims: the ordinary
+    source metadata is present, and the evidence is pinned to a version plus a
+    current check. This models "not just sourced, but sourced to this run." -/
+structure VersionedEvidenceSource where
+  source : EvidenceSource
+  versionRecorded : Bool
+  currentCheckPassed : Bool
+
+def FreshSourceValid (s : VersionedEvidenceSource) : Prop :=
+  SourceValid s.source ∧ s.versionRecorded = true ∧ s.currentCheckPassed = true
+
+structure VersionedSourcedBoundary where
+  boundary : ClaimBoundary
+  source : VersionedEvidenceSource
+
+def FreshClaimPromotable (b : VersionedSourcedBoundary) (c : Claim) : Prop :=
+  BoundaryConsistent b.boundary ∧ Allows b.boundary.doesClaim c ∧ FreshSourceValid b.source
+
+def leanFoundationClaimsFreshSource : VersionedEvidenceSource :=
+  { source := leanFoundationClaimsSource
+    versionRecorded := true
+    currentCheckPassed := true }
+
+def shieldPrivateUseFreshBoundary : VersionedSourcedBoundary :=
+  { boundary := shieldPrivateUseBoundary
+    source := leanFoundationClaimsFreshSource }
+
+theorem lean_foundation_claims_fresh_source_valid :
+    FreshSourceValid leanFoundationClaimsFreshSource := by
+  exact ⟨lean_foundation_claims_source_valid, rfl, rfl⟩
+
+theorem shield_fresh_private_daily_use_promotable :
+    FreshClaimPromotable shieldPrivateUseFreshBoundary Claim.privateDailyUse := by
+  exact ⟨shield_boundary_consistent, shield_boundary_claims_private_daily_use,
+    lean_foundation_claims_fresh_source_valid⟩
+
+/-- A stale or unversioned source cannot support a current promotable claim. -/
+theorem stale_source_not_fresh_promotable (b : VersionedSourcedBoundary) (c : Claim)
+    (h : ¬ FreshSourceValid b.source) :
+    ¬ FreshClaimPromotable b c := by
+  intro hp
+  exact h hp.2.2
+
+def composeFreshSources (a b : VersionedEvidenceSource) : VersionedEvidenceSource :=
+  { source := composeSources a.source b.source
+    versionRecorded := a.versionRecorded && b.versionRecorded
+    currentCheckPassed := a.currentCheckPassed && b.currentCheckPassed }
+
+def composeFreshBoundaries (a b : VersionedSourcedBoundary) : VersionedSourcedBoundary :=
+  { boundary := composeBoundaries a.boundary b.boundary
+    source := composeFreshSources a.source b.source }
+
+theorem composed_fresh_source_requires_left (a b : VersionedEvidenceSource) :
+    FreshSourceValid (composeFreshSources a b) → FreshSourceValid a := by
+  intro h
+  exact ⟨composed_source_valid_requires_left a.source b.source h.1,
+    and_true_left (by simpa [FreshSourceValid, composeFreshSources] using h.2.1),
+    and_true_left (by simpa [FreshSourceValid, composeFreshSources] using h.2.2)⟩
+
+theorem composed_fresh_source_requires_right (a b : VersionedEvidenceSource) :
+    FreshSourceValid (composeFreshSources a b) → FreshSourceValid b := by
+  intro h
+  exact ⟨composed_source_valid_requires_right a.source b.source h.1,
+    and_true_right (by simpa [FreshSourceValid, composeFreshSources] using h.2.1),
+    and_true_right (by simpa [FreshSourceValid, composeFreshSources] using h.2.2)⟩
+
+/-- Freshness also cannot be manufactured by aggregation. If a composed source
+    is fresh, both inputs were already fresh. -/
+theorem composed_fresh_source_requires_both (a b : VersionedEvidenceSource) :
+    FreshSourceValid (composeFreshSources a b) → FreshSourceValid a ∧ FreshSourceValid b := by
+  intro h
+  exact ⟨composed_fresh_source_requires_left a b h,
+    composed_fresh_source_requires_right a b h⟩
+
+/-- A current composed claim can promote only when both inputs had fresh,
+    version-pinned source records. -/
+theorem composed_fresh_claim_requires_both_sources (a b : VersionedSourcedBoundary) (c : Claim) :
+    FreshClaimPromotable (composeFreshBoundaries a b) c →
+      FreshSourceValid a.source ∧ FreshSourceValid b.source := by
+  intro h
+  exact composed_fresh_source_requires_both a.source b.source h.2.2
+
+/-- Self-composition of the current public Lean source remains fresh because the
+    same version-pinned `lake build` evidence is present on both sides. -/
+theorem shield_fresh_self_composition_private_daily_use_promotable :
+    FreshClaimPromotable
+      (composeFreshBoundaries shieldPrivateUseFreshBoundary shieldPrivateUseFreshBoundary)
+      Claim.privateDailyUse := by
+  exact ⟨shield_boundary_self_composition_consistent, rfl,
+    ⟨⟨rfl, rfl, rfl⟩, rfl, rfl⟩⟩
+
 #check @shield_private_use_gate_earned
 #check @shield_public_release_not_earned
 #check @shield_private_use_block_safe
@@ -563,6 +654,11 @@ theorem shield_sourced_self_composition_private_daily_use_promotable :
 #check @composed_source_valid_requires_both
 #check @composed_sourced_claim_requires_both_sources
 #check @shield_sourced_self_composition_private_daily_use_promotable
+#check @shield_fresh_private_daily_use_promotable
+#check @stale_source_not_fresh_promotable
+#check @composed_fresh_source_requires_both
+#check @composed_fresh_claim_requires_both_sources
+#check @shield_fresh_self_composition_private_daily_use_promotable
 #print axioms shield_private_use_block_safe
 #print axioms production_authorization_requires_gate
 #print axioms checkpoint_authorization_requires_gate
@@ -578,3 +674,7 @@ theorem shield_sourced_self_composition_private_daily_use_promotable :
 #print axioms invalid_source_not_promotable
 #print axioms composed_source_valid_requires_both
 #print axioms composed_sourced_claim_requires_both_sources
+#print axioms shield_fresh_private_daily_use_promotable
+#print axioms stale_source_not_fresh_promotable
+#print axioms composed_fresh_source_requires_both
+#print axioms composed_fresh_claim_requires_both_sources

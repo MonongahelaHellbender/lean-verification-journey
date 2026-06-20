@@ -208,6 +208,11 @@ manufacture valid provenance either; if a composed sourced claim promotes, both 
 metadata. This does **not** prove the outside world is true. It proves the dashboard grammar cannot treat
 an unsourced claim as earned evidence.
 
+The stricter version adds freshness: a source can be valid yet still not current enough for an operational
+claim. `VersionedEvidenceSource` adds a version-pinned record and a current-check flag; Lean proves the
+same refusal rule for stale evidence. A claim backed by an old or unversioned source may remain visible
+as history, but it cannot power a current promotion under this formal grammar.
+
 ## Understanding it (the point is the ideas, not the syntax)
 
 - [`UNDERSTANDING.md`](UNDERSTANDING.md) — a concept-first primer on what formal verification *is* and
