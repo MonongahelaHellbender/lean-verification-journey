@@ -16,15 +16,13 @@ now inside Lean's tiny trusted kernel.
 | 3 | W(2,3) ≥ 9: a 2-coloring of {1,…,8} with no monochromatic 3-term arithmetic progression | [`LeanVerificationJourney/Basic.lean`](LeanVerificationJourney/Basic.lean) | ✅ `decide` |
 | 4 | S(2) ≤ 4: **every** 2-coloring of {1,…,5} has a monochromatic `a+b=c` (universal impossibility) | [`LeanVerificationJourney/Basic.lean`](LeanVerificationJourney/Basic.lean) | ✅ `decide` |
 | 5 | W(2,3) ≤ 9: **every** 2-coloring of {1,…,9} has a monochromatic 3-term progression | [`LeanVerificationJourney/Basic.lean`](LeanVerificationJourney/Basic.lean) | ✅ `decide` |
+| 6 | S(3) ≤ 13: **every** 3-coloring of {1,…,14} has a monochromatic `a+b=c` — pins **S(3) = 13** with Lemma 2 | [`LeanVerificationJourney/Basic.lean`](LeanVerificationJourney/Basic.lean) | ✅ `native_decide` |
 
-Lemmas 1 + 4 together pin **S(2) = 4** exactly, and lemmas 3 + 5 pin **W(2,3) = 9** exactly (a good
-coloring exists at the lower size; no coloring survives one step further).
+Lemmas 1 + 4 pin **S(2) = 4** exactly. Lemmas 3 + 5 pin **W(2,3) = 9** exactly. Lemmas 2 + 6 pin **S(3) = 13** exactly.
 
-The whole file is checked by Lean's kernel with **no external tools and no Mathlib** — run `lake build`
-and it returns clean. `#print axioms` at the bottom confirms every theorem *"does not depend on any
-axioms"*: the trusted base is the kernel plus a few lines of encoding you can read in one sitting.
+Lemmas 1–5 are checked by Lean's kernel with no external tools and no Mathlib — `#print axioms` confirms *"does not depend on any axioms."* Lemma 6 uses `native_decide` (3^14 = 4,782,969 colorings to rule out — too many for kernel exhaustion), which adds the Lean compiler (`Lean.ofReduceBool`) to the trusted base. That's the honest, documented cost of the speed. See CONCEPTS.md for the tradeoff.
 
-*(The single file currently holds all five combinatorics witnesses; it'll be split into modules as the
+*(The single file currently holds all six combinatorics witnesses; it'll be split into modules as the
 project grows.)*
 
 Each piece corresponds to a self-verified claim from my

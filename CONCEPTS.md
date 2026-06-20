@@ -163,4 +163,53 @@ and it's the same finite-exhaustible vs. genuinely-large boundary again — only
 
 ---
 
+## Lemma #6 (S(3) ≤ 13) — the first step up the trusted-base ladder
+
+This pairs with Lemma #2 (S(3) ≥ 13) to pin **S(3) = 13** exactly. The math is the same shape as
+Lemma #4 (S(2) ≤ 4): rule out every coloring. What changes is the *scale* — 3^14 = 4,782,969
+colorings instead of 2^5 = 32 — and that forces a deliberate engineering choice.
+
+**Why `native_decide` instead of `decide`?**
+
+`decide` runs the check *inside Lean's kernel*. The kernel is tiny, interpreted, and trusted. For
+32 cases (Lemma #4), that's instant. For 4.8 million cases, the kernel would grind for hours.
+
+`native_decide` *compiles* the check to machine code and runs it. The result comes back in seconds.
+But there's a cost: you now also trust the **Lean compiler**, not only the kernel. Lean captures this
+precisely — `#print axioms S3_upper_bound` reports:
+
+```
+'S3_upper_bound' depends on axioms: [S3_upper_bound._native.native_decide.ax_1_1]
+```
+
+That axiom is `Lean.ofReduceBool`: "if native compiled code returned `true`, trust it." It's the
+explicit, auditable price of using the compiler. Compare: `S2_upper_bound` reports *"does not depend
+on any axioms"* — pure kernel. Both are real proofs; they differ in what you have to trust.
+
+**The lesson that transfers:**
+
+When you evaluate AI-generated proofs, code, or test suites, you constantly face a version of this
+tradeoff: deeper checking costs more (time, resources, tooling); faster checking trusts more (the
+compiler, the framework, the approximation). The right choice depends on how much the result matters
+and what's inside the trusted thing. `native_decide` trusts the Lean compiler, which is itself
+heavily tested and formally studied — a reasonable extension of trust for a combinatorics check. It
+would *not* be reasonable for a safety-critical system where the compiler itself might be the attack
+surface. Knowing the difference, and being able to articulate which part you're trusting, is the
+judgment skill. The axiom list makes that judgment explicit.
+
+**Where this fits in the hierarchy:**
+
+| method | cases handled | trusted base beyond the kernel |
+|---|---|---|
+| `decide` | up to ~tens of thousands | nothing |
+| `native_decide` | millions | Lean compiler + `Lean.ofReduceBool` |
+| SAT + LRAT (external) | billions | drat-trim + LRAT format spec |
+| SAT + LRAT in Lean | billions | a Lean-internal LRAT checker (next rung) |
+
+S(4) ≤ 44 and W(2,5) ≤ 178 are in the SAT+LRAT row — the companion
+`certified-combinatorics-verification` tool handles them via drat-trim + HOL4-verified cake_lpr.
+Bringing that chain into Lean's hierarchy is the next rung on this roadmap.
+
+---
+
 *Companion updated as we add each lemma. The point is never the syntax — it's the understanding.*

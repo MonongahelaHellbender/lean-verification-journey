@@ -207,6 +207,68 @@ theorem W23_upper_bound :
   So the trusted base for "S(2) = 4" is: Lean's kernel, and the few lines of
   encoding above that you can read in one sitting. Nothing else.
 -/
+/-
+  ────────────────────────────────────────────────────────────────────────────
+  Lemma #6 — S(3) ≤ 13   (completing the pinning of S(3) = 13)
+  ----------------------------------------------------------------------------
+  Lemma #2 showed S(3) ≥ 13: an explicit 3-coloring of {1,...,13} that works.
+  This proves the other half — S(3) ≤ 13 — by showing that every 3-coloring
+  of {1,...,14} FAILS (contains a monochromatic a + b = c with a,b,c ∈ {1..14}).
+  Together, they pin **S(3) = 13** exactly.
+
+  The challenge: 3^14 = 4,782,969 colorings to rule out. That's too many for
+  kernel `decide` (which would run for hours in the kernel), but `native_decide`
+  compiles the check to native machine code and runs it in seconds.
+
+  THIS IS THE FIRST PLACE WE USE `native_decide` — and that's a deliberate,
+  documented step in the trusted-base story. See CONCEPTS.md for the tradeoff.
+-/
+
+/-- Color of number `i` (1-based) under a 3-coloring encoded as a base-3 integer.
+    The color of number i is the i-th "digit" of `code` in base 3. -/
+def colorAt3 (code i : Nat) : Nat :=
+  (code / (3 ^ (i - 1))) % 3
+
+/-- All Schur triples (a, b, c) with a+b=c inside {1,...,14}. -/
+def schurTriples14 : List (Nat × Nat × Nat) :=
+  (List.range 14).flatMap fun i =>
+    (List.range 14).flatMap fun j =>
+      let a := i + 1; let b := j + 1; let c := a + b
+      if c ≤ 14 then [(a, b, c)] else []
+
+/-- S(3) ≤ 13: every 3-coloring of {1,...,14} has a monochromatic Schur triple.
+    3^14 = 4,782,969 colorings — `native_decide` compiles this to machine code.
+    The proof still holds; what changes is which part of the system we trust:
+    now the Lean *compiler*, not only the kernel. See CONCEPTS.md. -/
+theorem S3_upper_bound :
+    ∀ code ∈ List.range (3 ^ 14),
+      ∃ t ∈ schurTriples14,
+        colorAt3 code t.1 = colorAt3 code t.2.1 ∧
+        colorAt3 code t.2.1 = colorAt3 code t.2.2 := by
+  native_decide
+
+#check @S3_upper_bound
+
+
+/-
+  ────────────────────────────────────────────────────────────────────────────
+  THE TRUSTED BASE, made explicit
+  ----------------------------------------------------------------------------
+  This is the whole point of the exercise, so let's prove it rather than assert
+  it. `#print axioms` lists every axiom a theorem depends on. A proof built only
+  from `decide` rests on nothing but the kernel's own computation — so the list
+  is EMPTY ("does not depend on any axioms"). Compare: any proof that reached for
+  classical logic would show `Classical.choice`, `propext`, `Quot.sound` here.
+
+  For `native_decide`, the axioms list shows `Lean.ofReduceBool` — the one extra
+  axiom that says "if the compiled native check returned true, trust it." That's
+  the honest cost of the speed. Everything else in the chain is still kernel-checked.
+
+  So the trusted base for "S(2) = 4" is: Lean's kernel + the few lines of encoding.
+  For "S(3) = 13" (upper bound): add the Lean compiler and `Lean.ofReduceBool`.
+  Both are explicit, both are inspectable.
+-/
 #print axioms coloring_is_sum_free
 #print axioms S2_upper_bound
 #print axioms W23_upper_bound
+#print axioms S3_upper_bound
