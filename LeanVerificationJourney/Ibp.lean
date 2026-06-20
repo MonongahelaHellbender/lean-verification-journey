@@ -188,6 +188,20 @@ theorem net_robust (x : Vec) (hx : inBox x ib) : (net x).getD 1 0 < (net x).getD
   rw [hnb] at hb
   exact sep_first_beats_second (net x) 5 9 (-4) 0 hb (by decide)
 
+/-- For this particular toy network, the classifier is even stronger than the
+    local IBP certificate: class 0 beats class 1 for every integer input.
+
+    This is not the general verification method — `dot_interval`, `affine_sound`,
+    `relu_sound`, and `net_robust` are the reusable checker pattern. This theorem
+    is a direct audit of the worked example itself, showing the initial `[-1,1]²`
+    robustness certificate was conservative. -/
+theorem net_robust_global (x1 x2 : Int) :
+    (net [x1, x2]).getD 1 0 < (net [x1, x2]).getD 0 0 := by
+  simp [net, affineVec, reluVec, dot]
+  omega
+
 #check @affine_sound
 #check @net_robust
 #print axioms net_robust
+#check @net_robust_global
+#print axioms net_robust_global

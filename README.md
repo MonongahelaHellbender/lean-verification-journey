@@ -146,7 +146,10 @@ branch-and-bound; the cheap, checkable core is this monotone propagation. Kept h
 SAT work — **integers** (quantized networks, a real subfield, so no float to trust) and **core Lean**, no
 Mathlib. `dot_interval` / `affine_sound` / `relu_sound` prove interval arithmetic over-approximates the
 true network; `net_robust` then certifies a worked 2-layer ReLU net robust over `[-1,1]²` — class 0 beats
-class 1 for *every* input in the box. Trusted base `propext, Classical.choice, Quot.sound`.
+class 1 for *every* input in the box. `net_robust_global` separately audits this particular toy network
+and proves the local box certificate was conservative: for this example, class 0 beats class 1 for every
+integer input. Trusted base `propext, Classical.choice, Quot.sound` for the reusable IBP checker, and
+`propext, Quot.sound` for the direct global toy-net proof.
 
 That's the real signal: *the same person, the same pattern, a second domain.* What's verified changed
 completely; what you trust is still a hundred lines you can read.
