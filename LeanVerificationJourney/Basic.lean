@@ -139,23 +139,74 @@ theorem vdwColoring_no_mono_3AP :
 
   Together with Lemma #1 (S(2) ≥ 4), this pins **S(2) = 4** exactly.
 
-  HOW WE ENUMERATE: we encode a 2-coloring of {1,2,3,4,5} as a natural number
-  0–31: bit i (= `Nat.testBit n i`) is the color of number i+1. The 32 possible
-  values of n are exactly the 32 possible 2-colorings. `List.range 32` gives them
-  all; `decide` checks every one.
-
-  The Schur triples in {1..5} (0-indexed):
-    1+1=2 → bits (0,0,1)   1+2=3 → (0,1,2)   1+3=4 → (0,2,3)
-    1+4=5 → (0,3,4)        2+2=4 → (1,1,3)   2+3=5 → (1,2,4)
+  We enumerate ALL 2^5 = 32 two-colorings of the five numbers directly, in core
+  Lean (no Mathlib): a coloring is a 5-bit code `0..31`, and the color of
+  position `pos` is bit `pos` of the code. `decide` ranges over `List.range 32`
+  — a bounded `∀`, which the kernel CAN evaluate — so the whole impossibility is
+  checked by Lean's trusted kernel, not an external tool.
+  (A `∀` over the function type `Fin 5 → Bool` is the mathematically natural
+   phrasing, but core Lean cannot synthesize its `Decidable` instance without
+   Mathlib's `Fintype` machinery; the bitmask encoding is the same 32 colorings,
+   kept inside fast-building core Lean.)
+  (Positions 0..4 correspond to numbers 1..5, so the triple a+b=c in numbers
+   becomes an index triple, e.g. 1+1=2 → (0,0,1), 2+3=5 → (1,2,4).)
 -/
+/-- The color (`Bool`) of position `pos` under the coloring encoded by 5-bit `code`. -/
+def colorAt (code pos : Nat) : Bool := (code >>> pos) % 2 == 1
+
+/-- The Schur triples among numbers 1..5, as 0-based position indices. -/
 def schurTriples5 : List (Nat × Nat × Nat) :=
   [(0, 0, 1), (0, 1, 2), (0, 2, 3), (0, 3, 4), (1, 1, 3), (1, 2, 4)]
 
 theorem S2_upper_bound :
-    ∀ n ∈ List.range 32,
-      ∃ t ∈ schurTriples5,
-        Nat.testBit n t.1 = Nat.testBit n t.2.1 ∧
-        Nat.testBit n t.2.1 = Nat.testBit n t.2.2 := by
+    ∀ code ∈ List.range 32, ∃ t ∈ schurTriples5,
+      colorAt code t.1 = colorAt code t.2.1 ∧ colorAt code t.2.1 = colorAt code t.2.2 := by
   decide
 
 #check @S2_upper_bound
+
+
+/-
+  ────────────────────────────────────────────────────────────────────────────
+  Lemma #5 — W(2,3) ≤ 9   (the impossibility direction for van der Waerden)
+  ----------------------------------------------------------------------------
+  Mirror of Lemma #4, for arithmetic progressions instead of sums. Every one of
+  the 2^9 = 512 two-colorings of {1,…,9} contains a monochromatic 3-term
+  progression. Together with Lemma #3 (W(2,3) ≥ 9) this pins **W(2,3) = 9**.
+
+  Same bitmask trick (positions 0..8 are the 9 low bits of `code`), and instead
+  of a hand-listed triple set we let the kernel range over every start `p` and
+  gap `d` with `p + 2d ≤ 8` — so there is no "did we list all progressions?" gap.
+
+  (`set_option maxRecDepth` only raises the elaborator's recursion limit so the
+  512-element search fits; it does NOT touch the kernel or the trusted base —
+  the proof is still checked the same way.)
+-/
+set_option maxRecDepth 10000 in
+theorem W23_upper_bound :
+    ∀ code ∈ List.range 512,
+      ∃ p ∈ List.range 9, ∃ d ∈ List.range 9,
+        1 ≤ d ∧ p + 2 * d ≤ 8 ∧
+        colorAt code p = colorAt code (p + d) ∧
+        colorAt code (p + d) = colorAt code (p + 2 * d) := by
+  decide
+
+#check @W23_upper_bound
+
+
+/-
+  ────────────────────────────────────────────────────────────────────────────
+  THE TRUSTED BASE, made explicit
+  ----------------------------------------------------------------------------
+  This is the whole point of the exercise, so let's prove it rather than assert
+  it. `#print axioms` lists every axiom a theorem depends on. A proof built only
+  from `decide` rests on nothing but the kernel's own computation — so the list
+  is EMPTY ("does not depend on any axioms"). Compare: any proof that reached for
+  classical logic would show `Classical.choice`, `propext`, `Quot.sound` here.
+
+  So the trusted base for "S(2) = 4" is: Lean's kernel, and the few lines of
+  encoding above that you can read in one sitting. Nothing else.
+-/
+#print axioms coloring_is_sum_free
+#print axioms S2_upper_bound
+#print axioms W23_upper_bound
