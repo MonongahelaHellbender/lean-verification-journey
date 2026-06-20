@@ -163,6 +163,27 @@ it reveals *how* it was obtained (a proof that reached for the compiler shows th
 axiom), it refuses false claims outright, and it exposes a cheating `sorry` (which shows up as `sorryAx`).
 AI fluency and confidence change none of it — the axiom list, not the model's say-so, is what you trust.
 
+## Turning the lens back on Foundation itself ([`FoundationClaims.lean`](LeanVerificationJourney/FoundationClaims.lean))
+
+The same discipline now applies to Foundation's own claim gates. [`FoundationClaims.lean`](LeanVerificationJourney/FoundationClaims.lean)
+formalizes a small, real Foundation invariant: a result block may earn **private daily use** while still
+refusing public release, production authorization, and checkpoint authorization. Stronger claims require
+their own explicit gates.
+
+The concrete Shield block currently represented there matches the operational posture: private daily use
+earned; burn-in, trusted beta feedback, stakeholder review, signed release, public release, and production
+not earned. Lean proves:
+
+- `shield_private_use_gate_earned`
+- `shield_public_release_not_earned`
+- `shield_private_use_block_safe`
+- `production_authorization_requires_gate`
+- `checkpoint_authorization_requires_gate`
+
+The key safety theorems do **not depend on any axioms**. This is the first formalized Foundation-native
+claim boundary: not a toy domain, but the project's own rule that review-ready evidence must not silently
+turn into production or public-release authority.
+
 ## Understanding it (the point is the ideas, not the syntax)
 
 - [`UNDERSTANDING.md`](UNDERSTANDING.md) — a concept-first primer on what formal verification *is* and
