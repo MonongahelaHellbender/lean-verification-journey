@@ -84,7 +84,8 @@ asset:
   earned while public release, production, and checkpoint authority remain refused; the core safety
   theorems have no axioms. The same module now proves a conservative composition rule: combining bounded
   evidence blocks by intersecting gates cannot create public-release, production, or checkpoint authority
-  out of weaker inputs.)*
+  out of weaker inputs. It also proves the negative-results rule: blocked/refused statuses remain
+  non-promotable under aggregation.)*
 
 In every case the judgment is the same: *Is there a small, checkable artifact? And do I trust the
 checker — at which named rung?*

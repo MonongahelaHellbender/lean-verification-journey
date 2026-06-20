@@ -190,6 +190,11 @@ cannot manufacture public-release or production prerequisites, and cannot create
 authorization when neither input had it. This is the dashboard/evidence-OS anti-overclaim invariant in
 kernel-checked form.
 
+Finally, it formalizes the negative-results rule. Foundation statuses include `earned`, `review`,
+`blocked`, and `refused`; only `earned` is promotable. Lean proves that a blocked or refused input cannot
+disappear into an earned aggregate. That is the machine-checked version of "failed gates stay visible as
+evidence, but never as promotions."
+
 ## Understanding it (the point is the ideas, not the syntax)
 
 - [`UNDERSTANDING.md`](UNDERSTANDING.md) — a concept-first primer on what formal verification *is* and

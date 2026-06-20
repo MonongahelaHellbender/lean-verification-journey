@@ -242,6 +242,74 @@ theorem shield_self_composition_no_production_or_checkpoint :
     (composeBlocks shieldPrivateUseBlock shieldPrivateUseBlock).checkpointAuthorized = false := by
   exact ⟨rfl, rfl⟩
 
+/-- Foundation dashboard evidence states. `earned` is the only status that can
+    support a promoted claim; `blocked` and `refused` are still evidence, but
+    they must stay visible as non-promotions. -/
+inductive EvidenceStatus where
+  | earned
+  | review
+  | blocked
+  | refused
+  deriving DecidableEq, Repr
+
+/-- A status is promotable only when it is explicitly earned. -/
+def Promotable : EvidenceStatus → Prop
+  | EvidenceStatus.earned => True
+  | _ => False
+
+/-- Conservative status composition for dashboards and evidence packets. Refusal
+    dominates, then blocked, then review; earned survives only when both inputs
+    are earned. This is the formal version of "failed gates remain visible." -/
+def combineStatus : EvidenceStatus → EvidenceStatus → EvidenceStatus
+  | EvidenceStatus.refused, _ => EvidenceStatus.refused
+  | _, EvidenceStatus.refused => EvidenceStatus.refused
+  | EvidenceStatus.blocked, _ => EvidenceStatus.blocked
+  | _, EvidenceStatus.blocked => EvidenceStatus.blocked
+  | EvidenceStatus.review, _ => EvidenceStatus.review
+  | _, EvidenceStatus.review => EvidenceStatus.review
+  | EvidenceStatus.earned, EvidenceStatus.earned => EvidenceStatus.earned
+
+theorem combine_refused_left (s : EvidenceStatus) :
+    combineStatus EvidenceStatus.refused s = EvidenceStatus.refused := by
+  cases s <;> rfl
+
+theorem combine_refused_right (s : EvidenceStatus) :
+    combineStatus s EvidenceStatus.refused = EvidenceStatus.refused := by
+  cases s <;> rfl
+
+theorem combine_blocked_left_not_refused (s : EvidenceStatus)
+    (h : s ≠ EvidenceStatus.refused) :
+    combineStatus EvidenceStatus.blocked s = EvidenceStatus.blocked := by
+  cases s <;> simp [combineStatus] at h ⊢
+
+theorem combine_blocked_right_not_refused (s : EvidenceStatus)
+    (h : s ≠ EvidenceStatus.refused) :
+    combineStatus s EvidenceStatus.blocked = EvidenceStatus.blocked := by
+  cases s <;> simp [combineStatus] at h ⊢
+
+/-- If a combined status is promotable, both inputs were promotable. -/
+theorem combined_promotable_requires_both (a b : EvidenceStatus) :
+    Promotable (combineStatus a b) → Promotable a ∧ Promotable b := by
+  cases a <;> cases b <;> simp [Promotable, combineStatus]
+
+/-- A blocked input cannot disappear into an earned aggregate. -/
+theorem blocked_left_not_promotable (s : EvidenceStatus) :
+    ¬ Promotable (combineStatus EvidenceStatus.blocked s) := by
+  cases s <;> simp [Promotable, combineStatus]
+
+/-- A refused input cannot disappear into an earned aggregate. -/
+theorem refused_left_not_promotable (s : EvidenceStatus) :
+    ¬ Promotable (combineStatus EvidenceStatus.refused s) := by
+  cases s <;> simp [Promotable, combineStatus]
+
+/-- A concrete OMD-style blocked scientific packet is evidence, but it is not a
+    promotable claim. -/
+def omdHeldoutBlockedStatus : EvidenceStatus := EvidenceStatus.blocked
+
+theorem omd_blocked_not_promotable :
+    ¬ Promotable omdHeldoutBlockedStatus := by
+  simp [omdHeldoutBlockedStatus, Promotable]
+
 #check @shield_private_use_gate_earned
 #check @shield_public_release_not_earned
 #check @shield_private_use_block_safe
@@ -253,9 +321,16 @@ theorem shield_self_composition_no_production_or_checkpoint :
 #check @compose_preserves_no_production_authority
 #check @compose_preserves_no_checkpoint_authority
 #check @shield_self_composition_no_production_or_checkpoint
+#check @combined_promotable_requires_both
+#check @blocked_left_not_promotable
+#check @refused_left_not_promotable
+#check @omd_blocked_not_promotable
 #print axioms shield_private_use_block_safe
 #print axioms production_authorization_requires_gate
 #print axioms checkpoint_authorization_requires_gate
 #print axioms composed_public_release_requires_both_inputs
 #print axioms composed_production_requires_both_inputs
 #print axioms compose_preserves_no_production_authority
+#print axioms combined_promotable_requires_both
+#print axioms blocked_left_not_promotable
+#print axioms refused_left_not_promotable
