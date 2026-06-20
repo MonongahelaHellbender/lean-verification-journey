@@ -7,6 +7,9 @@ it. Lean is where that happens at the frontier (AlphaProof, Harmonic, formal-met
 is me building that skill the honest way — by re-proving results I've already certified by other means,
 now inside Lean's tiny trusted kernel.
 
+**→ [`TRUST.md`](TRUST.md) — what this repo is *really* about:** the certificate pattern for trusting
+machine-generated answers, the named trusted-base ladder, and why this is the shape of trustworthy AI.
+
 ## Progress
 
 | # | result | file | status |
@@ -100,6 +103,14 @@ proof of `checkProofArr_unsat`, the Lean compiler, and the (untrusted) parser �
 standalone verified checkers like `cake_lpr`. A parser bug can still only cause a *refusal*, never a false
 `VERIFIED`. Try it: `lake build lratcheck && ./.lake/build/bin/lratcheck samples_w33.cert` (a bundled
 6179-step W(3,3) ≤ 27 certificate).
+
+**The checker is family-agnostic.** Schur, van der Waerden, *and* Ramsey numbers all flow through the same
+`lratcheck` unchanged — it only ever sees a CNF and a certificate, never the combinatorics. As a
+demonstration, **R(3,3) = 6** (the classic "any party of six has three mutual friends or three mutual
+strangers") and **R(3,4) = 9** were generated, solved, and certified by the same pipeline; the latter is
+bundled as `samples_r34.cert` (an 8635-step proof). All the certificates here are RUP-only (the `glucose`
+solver emits DRUP proofs), which is why the checker needs no RAT support yet — a solver that emitted RAT
+steps would be the thing that changes that.
 
 **Honest boundary.** The checker is RUP-only (no RAT steps yet). The parser holds the whole token list in
 memory, so truly enormous certificates would want streaming I/O. Neither is a soundness gap — the proof
