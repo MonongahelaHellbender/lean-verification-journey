@@ -225,6 +225,13 @@ checker actually checked. Lean proves the mismatch refusal rule: if those identi
 not promotable. In a private deployment those identities can be concrete paths, hashes, or result-block
 IDs; in Lean the important invariant is equality of the cited and checked artifact.
 
+The latest layer aligns that model with result-block schemas. `FoundationResultRow` is the logical payload
+of a decoded report row: boundary, source, claimed artifact, checked artifact, and `promotionAllowed`.
+Lean proves that any safe row with `promotionAllowed = true` implies the full artifact-bound claim, the
+artifact identities match, and the current source is valid. It also proves the two refusal checks a JSON
+validator should enforce: mismatched artifacts cannot promote, and invalid/expired current sources cannot
+promote. This is schema semantics, not a JSON parser; it says what the parsed fields must prove.
+
 ## Understanding it (the point is the ideas, not the syntax)
 
 - [`UNDERSTANDING.md`](UNDERSTANDING.md) — a concept-first primer on what formal verification *is* and

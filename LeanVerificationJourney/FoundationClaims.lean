@@ -816,6 +816,82 @@ theorem composite_artifact_source_requires_inputs (s : CompositeArtifactSource) 
   intro h
   exact ⟨h.1, h.2.1⟩
 
+/-- The logical payload of a Foundation result-block row after JSON parsing:
+    boundary fields, source fields, artifact identity fields, and the public
+    promotion flag. This is not a parser; it is the schema contract the parser
+    must populate. -/
+structure FoundationResultRow where
+  boundary : ClaimBoundary
+  source : ExpiringEvidenceSource
+  claimedArtifact : ArtifactId
+  checkedArtifact : ArtifactId
+  promotionAllowed : Bool
+
+def rowArtifactSource (r : FoundationResultRow) : ArtifactBoundSource :=
+  { source := r.source
+    claimedArtifact := r.claimedArtifact
+    checkedArtifact := r.checkedArtifact }
+
+def rowArtifactBoundary (r : FoundationResultRow) : ArtifactSourcedBoundary :=
+  { boundary := r.boundary
+    source := rowArtifactSource r }
+
+/-- A schema row is safe for a particular claim when the promotion flag, if set,
+    is backed by the full artifact-bound claim grammar. -/
+def RowSafeForClaim (r : FoundationResultRow) (c : Claim) : Prop :=
+  r.promotionAllowed = true → ArtifactClaimPromotable (rowArtifactBoundary r) c
+
+/-- If a safe row allows promotion, then the complete artifact-bound claim is
+    available: consistent boundary, made claim, current source, unexpired source,
+    and artifact match. -/
+theorem row_promotion_implies_artifact_claim (r : FoundationResultRow) (c : Claim)
+    (hSafe : RowSafeForClaim r c) (hPromote : r.promotionAllowed = true) :
+    ArtifactClaimPromotable (rowArtifactBoundary r) c := by
+  exact hSafe hPromote
+
+theorem row_promotion_implies_artifact_match (r : FoundationResultRow) (c : Claim)
+    (hSafe : RowSafeForClaim r c) (hPromote : r.promotionAllowed = true) :
+    r.claimedArtifact = r.checkedArtifact := by
+  exact (row_promotion_implies_artifact_claim r c hSafe hPromote).2.2.2
+
+theorem row_promotion_implies_current_source (r : FoundationResultRow) (c : Claim)
+    (hSafe : RowSafeForClaim r c) (hPromote : r.promotionAllowed = true) :
+    CurrentSourceValid r.source := by
+  exact (row_promotion_implies_artifact_claim r c hSafe hPromote).2.2.1
+
+/-- If a row cites a different artifact from the checked artifact, a safe row
+    cannot set `promotionAllowed = true`. -/
+theorem mismatched_row_cannot_promote (r : FoundationResultRow) (c : Claim)
+    (hSafe : RowSafeForClaim r c) (hMismatch : r.claimedArtifact ≠ r.checkedArtifact) :
+    r.promotionAllowed ≠ true := by
+  intro hPromote
+  exact hMismatch (row_promotion_implies_artifact_match r c hSafe hPromote)
+
+/-- Likewise, if the current source is invalid or expired, a safe row cannot
+    set `promotionAllowed = true`. -/
+theorem invalid_current_source_row_cannot_promote (r : FoundationResultRow) (c : Claim)
+    (hSafe : RowSafeForClaim r c) (hInvalid : ¬ CurrentSourceValid r.source) :
+    r.promotionAllowed ≠ true := by
+  intro hPromote
+  exact hInvalid (row_promotion_implies_current_source r c hSafe hPromote)
+
+def shieldPrivateUseResultRow : FoundationResultRow :=
+  { boundary := shieldPrivateUseBoundary
+    source := leanFoundationClaimsCurrentSource
+    claimedArtifact := ArtifactId.foundationClaimsLean
+    checkedArtifact := ArtifactId.foundationClaimsLean
+    promotionAllowed := true }
+
+theorem shield_private_use_row_safe :
+    RowSafeForClaim shieldPrivateUseResultRow Claim.privateDailyUse := by
+  intro h
+  exact shield_artifact_private_daily_use_promotable
+
+theorem shield_private_use_row_promotes_artifact_claim :
+    ArtifactClaimPromotable (rowArtifactBoundary shieldPrivateUseResultRow) Claim.privateDailyUse := by
+  exact row_promotion_implies_artifact_claim shieldPrivateUseResultRow Claim.privateDailyUse
+    shield_private_use_row_safe rfl
+
 #check @shield_private_use_gate_earned
 #check @shield_public_release_not_earned
 #check @shield_private_use_block_safe
@@ -854,6 +930,12 @@ theorem composite_artifact_source_requires_inputs (s : CompositeArtifactSource) 
 #check @mismatched_artifact_not_promotable
 #check @artifact_source_valid_implies_current
 #check @composite_artifact_source_requires_inputs
+#check @row_promotion_implies_artifact_claim
+#check @row_promotion_implies_artifact_match
+#check @row_promotion_implies_current_source
+#check @mismatched_row_cannot_promote
+#check @invalid_current_source_row_cannot_promote
+#check @shield_private_use_row_promotes_artifact_claim
 #print axioms shield_private_use_block_safe
 #print axioms production_authorization_requires_gate
 #print axioms checkpoint_authorization_requires_gate
@@ -882,3 +964,8 @@ theorem composite_artifact_source_requires_inputs (s : CompositeArtifactSource) 
 #print axioms mismatched_artifact_not_promotable
 #print axioms artifact_source_valid_implies_current
 #print axioms composite_artifact_source_requires_inputs
+#print axioms row_promotion_implies_artifact_claim
+#print axioms row_promotion_implies_artifact_match
+#print axioms row_promotion_implies_current_source
+#print axioms mismatched_row_cannot_promote
+#print axioms invalid_current_source_row_cannot_promote
