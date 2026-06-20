@@ -931,6 +931,73 @@ theorem shield_private_use_row_promotes_artifact_claim :
   exact row_promotion_implies_artifact_claim shieldPrivateUseResultRow Claim.privateDailyUse
     shield_private_use_row_safe rfl
 
+/-- Conservative dashboard-row aggregation: combine claims, sources, statuses,
+    and permit promotion only when both input rows permitted promotion. The
+    aggregate artifact is a new dashboard artifact, but its source is still the
+    composed source of the inputs. -/
+def composeResultRows (a b : FoundationResultRow) : FoundationResultRow :=
+  { boundary := composeBoundaries a.boundary b.boundary
+    source := composeCurrentSources a.source b.source
+    claimedArtifact := ArtifactId.aggregate
+    checkedArtifact := ArtifactId.aggregate
+    status := combineStatus a.status b.status
+    promotionAllowed := a.promotionAllowed && b.promotionAllowed }
+
+theorem composed_row_promotion_requires_left (a b : FoundationResultRow) :
+    (composeResultRows a b).promotionAllowed = true → a.promotionAllowed = true := by
+  intro h
+  exact and_true_left (by simpa [composeResultRows] using h)
+
+theorem composed_row_promotion_requires_right (a b : FoundationResultRow) :
+    (composeResultRows a b).promotionAllowed = true → b.promotionAllowed = true := by
+  intro h
+  exact and_true_right (by simpa [composeResultRows] using h)
+
+theorem composed_row_promotion_requires_both (a b : FoundationResultRow) :
+    (composeResultRows a b).promotionAllowed = true →
+      a.promotionAllowed = true ∧ b.promotionAllowed = true := by
+  intro h
+  exact ⟨composed_row_promotion_requires_left a b h,
+    composed_row_promotion_requires_right a b h⟩
+
+/-- If the aggregate row promotes, both input rows had their own promotion flag
+    set. With row-safety for the inputs, that gives the full input
+    artifact-bound claims. -/
+theorem composed_row_promotion_requires_input_claims
+    (a b : FoundationResultRow) (c : Claim)
+    (hSafeA : RowSafeForClaim a c) (hSafeB : RowSafeForClaim b c)
+    (hPromote : (composeResultRows a b).promotionAllowed = true) :
+    ArtifactClaimPromotable (rowArtifactBoundary a) c ∧
+      ArtifactClaimPromotable (rowArtifactBoundary b) c := by
+  have hBoth := composed_row_promotion_requires_both a b hPromote
+  exact ⟨row_promotion_implies_artifact_claim a c hSafeA hBoth.1,
+    row_promotion_implies_artifact_claim b c hSafeB hBoth.2⟩
+
+/-- If a safe aggregate row promotes, the composed source is current; by
+    conservative source composition, both input row sources were current. -/
+theorem composed_row_promotion_requires_input_current_sources
+    (a b : FoundationResultRow) (c : Claim)
+    (hSafeAgg : RowSafeForClaim (composeResultRows a b) c)
+    (hPromote : (composeResultRows a b).promotionAllowed = true) :
+    CurrentSourceValid a.source ∧ CurrentSourceValid b.source := by
+  have hCurrent :
+      CurrentSourceValid (composeCurrentSources a.source b.source) := by
+    simpa [composeResultRows] using
+      row_promotion_implies_current_source (composeResultRows a b) c hSafeAgg hPromote
+  exact composed_current_source_requires_both a.source b.source hCurrent
+
+/-- If a safe aggregate row promotes, the aggregate status is promotable; by
+    conservative status composition, both input statuses were promotable. -/
+theorem composed_row_promotion_requires_input_statuses
+    (a b : FoundationResultRow) (c : Claim)
+    (hSafeAgg : RowSafeForClaim (composeResultRows a b) c)
+    (hPromote : (composeResultRows a b).promotionAllowed = true) :
+    Promotable a.status ∧ Promotable b.status := by
+  have hStatus : Promotable (combineStatus a.status b.status) := by
+    simpa [composeResultRows] using
+      row_promotion_implies_status_promotable (composeResultRows a b) c hSafeAgg hPromote
+  exact combined_promotable_requires_both a.status b.status hStatus
+
 #check @shield_private_use_gate_earned
 #check @shield_public_release_not_earned
 #check @shield_private_use_block_safe
@@ -980,6 +1047,10 @@ theorem shield_private_use_row_promotes_artifact_claim :
 #check @blocked_row_cannot_promote
 #check @refused_row_cannot_promote
 #check @shield_private_use_row_promotes_artifact_claim
+#check @composed_row_promotion_requires_both
+#check @composed_row_promotion_requires_input_claims
+#check @composed_row_promotion_requires_input_current_sources
+#check @composed_row_promotion_requires_input_statuses
 #print axioms shield_private_use_block_safe
 #print axioms production_authorization_requires_gate
 #print axioms checkpoint_authorization_requires_gate
@@ -1018,3 +1089,7 @@ theorem shield_private_use_row_promotes_artifact_claim :
 #print axioms review_row_cannot_promote
 #print axioms blocked_row_cannot_promote
 #print axioms refused_row_cannot_promote
+#print axioms composed_row_promotion_requires_both
+#print axioms composed_row_promotion_requires_input_claims
+#print axioms composed_row_promotion_requires_input_current_sources
+#print axioms composed_row_promotion_requires_input_statuses

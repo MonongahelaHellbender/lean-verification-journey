@@ -95,7 +95,9 @@ asset:
   The artifact-identity layer then proves the source-mismatch refusal rule: if the artifact cited by a
   claim is not the artifact checked by the verifier, the claim cannot promote. The result-row layer aligns
   this with report schemas: a safe row with `promotionAllowed = true` entails promotable status, artifact
-  match, and current source validity; `review`, `blocked`, and `refused` rows cannot promote.)*
+  match, and current source validity; `review`, `blocked`, and `refused` rows cannot promote. Aggregated
+  dashboard rows compose conservatively too: aggregate promotion requires both input promotions and
+  preserves input source/status obligations.)*
 
 In every case the judgment is the same: *Is there a small, checkable artifact? And do I trust the
 checker — at which named rung?*

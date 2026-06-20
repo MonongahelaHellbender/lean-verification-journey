@@ -233,6 +233,12 @@ refusal checks a JSON validator should enforce: mismatched artifacts cannot prom
 current sources cannot promote, and `review` / `blocked` / `refused` rows cannot promote. This is schema
 semantics, not a JSON parser; it says what the parsed fields must prove.
 
+The dashboard-aggregate layer then proves promotion cannot be laundered through summaries.
+`composeResultRows` combines boundaries, sources, statuses, and promotion flags conservatively: aggregate
+promotion requires both input promotion flags, and safe aggregate promotion implies both input sources and
+statuses were current/promotable. With row-safety on the inputs, aggregate promotion also recovers both
+input artifact-bound claims.
+
 ## Understanding it (the point is the ideas, not the syntax)
 
 - [`UNDERSTANDING.md`](UNDERSTANDING.md) — a concept-first primer on what formal verification *is* and
