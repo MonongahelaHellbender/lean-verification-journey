@@ -49,13 +49,20 @@ which a one-line certificate now discharges.
 | `demoF_unsat`, `demoG_unsat` | two worked examples (a unit-propagation chain; the canonical 2-variable UNSAT, which needs a *learned* clause) | ✅ `decide` |
 | `schur5_unsat` | **S(2) ≤ 4** via a *real* solver certificate (Schur {1..5}, k=2) | ✅ `decide` |
 | `vdw923_unsat` | **W(2,3) ≤ 9** via a *real* certificate (10 proof steps, 50 clauses) | ✅ `decide` |
+| `w24_unsat` ([`LratW24.lean`](LeanVerificationJourney/LratW24.lean)) | **W(2,4) ≤ 35** — 2³⁵ ≈ 34 billion colorings, *far beyond brute force* — via a real 429-step certificate | ✅ `native_decide` |
 
-The last two are **not hand-written**: a real `glucose` run produces a DRAT proof, `drat-trim`
-converts it to an LRAT certificate (`s VERIFIED`), and the data fed to `checkProof` is parsed straight
-from that. The parser is *untrusted* — if it mis-translates anything, the verified checker simply
-returns `false` (a refusal), never a wrong `Unsat`. All soundness lives in the proved theorem. Both
-real certificates kernel-check (`by decide`), so the trusted base stays `propext, Quot.sound` — no
-compiler, no Mathlib, no external tool trusted at proof time.
+These are **not hand-written**: a real `glucose` run produces a DRAT proof, `drat-trim` converts it to
+an LRAT certificate (`s VERIFIED`), and the data fed to `checkProof` is parsed straight from that. The
+parser is *untrusted* — if it mis-translates anything, the verified checker simply returns `false` (a
+refusal), never a wrong `Unsat`. All soundness lives in the proved theorem.
+
+The small instances kernel-check (`by decide`), so their trusted base stays `propext, Quot.sound` — no
+compiler, no Mathlib, no external tool trusted at proof time. **`w24_unsat` is the one that shows why
+the bridge matters**: W(2,4) ≤ 35 is a *known* van der Waerden number, but its 2³⁵ colorings are utterly
+past brute force — yet a 429-step certificate dispatches it. That one uses `native_decide` (429 steps is
+too many to reduce in the kernel), so its `#print axioms` honestly shows the extra `ofReduceBool`
+(compiler) axiom — the documented cost of climbing one rung up the trusted-base ladder, on purpose, when
+brute force is off the table.
 
 **Honest boundary.** The checker handles RUP steps (the common case; these certificates are RUP-only)
 but not yet RAT steps, and it won't *scale* to the ~5-million-step S(4) ≤ 44 certificate — that's a

@@ -251,13 +251,23 @@ thing standing between you and a false claim.** When you evaluate an AI system l
 pattern to reach for — not "is the smart part correct?" but "is there a small *checkable* artifact, and
 do I trust the checker?"
 
-**Two real certificates, not toys.** `schur5_unsat` (S(2) ≤ 4) and `vdw923_unsat` (W(2,3) ≤ 9) are
-checked from certificates a real solver actually emitted — the second is a 10-step, 50-clause proof.
-Both kernel-check (`by decide`), so the trusted base is still just `propext, Quot.sound`. Debugging them
+**Real certificates, not toys.** `schur5_unsat` (S(2) ≤ 4) and `vdw923_unsat` (W(2,3) ≤ 9) are checked
+from certificates a real solver actually emitted — the second is a 10-step, 50-clause proof. Both
+kernel-check (`by decide`), so the trusted base is still just `propext, Quot.sound`. Debugging them
 taught the real lessons: LRAT clause-IDs are non-contiguous and interleave deletions (the parser must
 remap and skip them), and a clause is a *set* of literals — a solver silently dedups `[-3,-3,-7]` to
 `{-3,-7}`, and a checker that forgets this will wrongly reject a valid proof. Every such bug was a false
 *rejection*, never a false acceptance — which is exactly the safety the soundness proof buys you.
+
+**The one that shows why this matters: `w24_unsat` (W(2,4) ≤ 35).** Here the bridge does something no
+amount of `decide`/`native_decide` brute force could: ruling out all 2³⁵ ≈ 34 *billion* colorings of
+{1,…,35}. We never enumerate them — a real 429-step certificate is replayed by the *same* verified
+checker, and the universal claim falls out. This is the entire thesis in one theorem: **a proved checker
+plus a small certificate beats brute force on a problem brute force can't touch.** The cost is honest and
+visible — 429 steps is too many to reduce in the kernel, so it uses `native_decide`, and `#print axioms`
+duly shows the extra `ofReduceBool` (compiler) axiom. That's the trusted-base ladder being climbed
+*deliberately*, exactly when the cheaper rung runs out — and being able to say precisely which rung
+you're on is the skill.
 
 **Where it stops (for now).** The checker is RUP-only (no RAT steps yet) and won't *scale* to the
 ~5-million-step S(4) ≤ 44 certificate — but that's a performance limit (a linked-list database is
