@@ -212,4 +212,59 @@ Bringing that chain into Lean's hierarchy is the next rung on this roadmap.
 
 ---
 
+## The LRAT bridge (`Lrat.lean`) — the deepest idea so far: *trust a checker, not an answer*
+
+Up to now, every result was its own proof. `Lrat.lean` is different: it's a **proof checker** — one
+program, proved correct once, that can certify *many* results without re-proving anything. This is how
+the verified-math frontier actually scales, and it's worth understanding the shape.
+
+**The problem.** A SAT solver can prove a formula has *no* solution — but the solver is a huge, fast,
+untrustworthy C program. You don't want to trust it. Modern solvers therefore emit a **certificate**: a
+step-by-step log (DRAT, then refined to **LRAT**) that a *tiny* checker can replay and confirm. The
+trust moves from the giant solver to the tiny checker — the same move as Lean's kernel, one level up.
+
+**What we built.** A checker in core Lean that replays an LRAT-style certificate:
+
+- A certificate learns one new clause at a time, each justified by **RUP** (reverse unit propagation):
+  "assume the new clause is false, propagate the forced consequences using the listed earlier clauses,
+  and hit a contradiction." When it finally learns the *empty* clause, the formula is unsatisfiable.
+- The checker maintains a growing **database** of clauses and replays each step.
+
+**The one idea that makes it scale — prove the checker, not the answer.** We prove *once*, by induction:
+
+> `checkProof_unsat : checkProof f steps = true → Unsat f`
+
+After that, certifying any specific formula is just *running* `checkProof` (a finite `Bool`
+computation) and quoting this theorem. Notice what `Unsat f` says: *no* assignment, out of the
+**infinitely many** functions `Nat → Bool`, satisfies `f`. `decide` could never brute-force that — it's
+a universal over an infinite domain (exactly the existence-vs-universal crux from Lemma 4, now over an
+*infinite* space). Yet a one-line certificate discharges it, because the *checker* was proved sound for
+all inputs in advance. **A proved checker converts a finite computation into an infinite guarantee.**
+That is the whole reason formal verification scales.
+
+**The honesty mechanism you should internalize.** The certificate data is produced by *untrusted* code
+(a real `glucose` solver, `drat-trim`, and a Python parser). None of that is trusted. If any of it is
+wrong, `checkProof` returns `false` — a *refusal* — and you simply have no theorem. It can never return
+`true` for a false statement, because that direction is what the soundness proof forbids. So the design
+rule is: **push everything you can into the untrusted side, and let a small proved core be the only
+thing standing between you and a false claim.** When you evaluate an AI system later, this is the
+pattern to reach for — not "is the smart part correct?" but "is there a small *checkable* artifact, and
+do I trust the checker?"
+
+**Two real certificates, not toys.** `schur5_unsat` (S(2) ≤ 4) and `vdw923_unsat` (W(2,3) ≤ 9) are
+checked from certificates a real solver actually emitted — the second is a 10-step, 50-clause proof.
+Both kernel-check (`by decide`), so the trusted base is still just `propext, Quot.sound`. Debugging them
+taught the real lessons: LRAT clause-IDs are non-contiguous and interleave deletions (the parser must
+remap and skip them), and a clause is a *set* of literals — a solver silently dedups `[-3,-3,-7]` to
+`{-3,-7}`, and a checker that forgets this will wrongly reject a valid proof. Every such bug was a false
+*rejection*, never a false acceptance — which is exactly the safety the soundness proof buys you.
+
+**Where it stops (for now).** The checker is RUP-only (no RAT steps yet) and won't *scale* to the
+~5-million-step S(4) ≤ 44 certificate — but that's a performance limit (a linked-list database is
+O(n²)), **not** a soundness limit. The proof already guarantees correctness at any size; what's missing
+is an efficient, array-backed data structure. That gap — fast *and* verified — is precisely where the
+real research lives.
+
+---
+
 *Companion updated as we add each lemma. The point is never the syntax — it's the understanding.*

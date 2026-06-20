@@ -27,10 +27,40 @@ project grows.)*
 
 Each piece corresponds to a self-verified claim from my
 [certified-combinatorics-verification](https://github.com/MonongahelaHellbender/certified-combinatorics-verification)
-tool — re-checked here by Lean instead of Python, shrinking the trusted base. (Note the natural
-boundary: the *large* upper bounds — S(4) ≤ 44, W(2,5) ≤ 178 — are far past what kernel `decide` can
-enumerate; those rest on the SAT + LRAT + HOL4-verified chain in that tool, and bridging an LRAT
-certificate into Lean is a later step on this roadmap.)
+tool — re-checked here by Lean instead of Python, shrinking the trusted base. The *large* upper bounds
+(S(4) ≤ 44, W(2,5) ≤ 178) are far past what kernel `decide` can enumerate; those rest on a SAT solver
+plus a machine-checkable **LRAT** certificate. Carrying that style of certificate *into* Lean is the
+next part of the project — and it has now started:
+
+## The LRAT bridge — a verified certificate checker
+
+[`LeanVerificationJourney/Lrat.lean`](LeanVerificationJourney/Lrat.lean) is a small **proof checker**,
+proved correct once, that turns an external SAT-solver refutation into a Lean theorem.
+
+The idea that makes this scale: **prove the checker sound a single time** (by induction, in core Lean),
+and then *every* instance is just a finite computation feeding that one theorem. Concretely
+`checkProof_unsat : checkProof f steps = true → Unsat f`, where `Unsat f` quantifies over the
+**infinite** space of all truth assignments — something `decide` can never brute-force directly, but
+which a one-line certificate now discharges.
+
+| result | what's checked | status |
+|---|---|---|
+| `rup_sound`, `checkProof_unsat` | the checker itself is sound (RUP + a growing learned-clause database) | ✅ proved, axioms = `propext, Quot.sound` only |
+| `demoF_unsat`, `demoG_unsat` | two worked examples (a unit-propagation chain; the canonical 2-variable UNSAT, which needs a *learned* clause) | ✅ `decide` |
+| `schur5_unsat` | **S(2) ≤ 4** via a *real* solver certificate (Schur {1..5}, k=2) | ✅ `decide` |
+| `vdw923_unsat` | **W(2,3) ≤ 9** via a *real* certificate (10 proof steps, 50 clauses) | ✅ `decide` |
+
+The last two are **not hand-written**: a real `glucose` run produces a DRAT proof, `drat-trim`
+converts it to an LRAT certificate (`s VERIFIED`), and the data fed to `checkProof` is parsed straight
+from that. The parser is *untrusted* — if it mis-translates anything, the verified checker simply
+returns `false` (a refusal), never a wrong `Unsat`. All soundness lives in the proved theorem. Both
+real certificates kernel-check (`by decide`), so the trusted base stays `propext, Quot.sound` — no
+compiler, no Mathlib, no external tool trusted at proof time.
+
+**Honest boundary.** The checker handles RUP steps (the common case; these certificates are RUP-only)
+but not yet RAT steps, and it won't *scale* to the ~5-million-step S(4) ≤ 44 certificate — that's a
+data-structure/performance wall (list append is O(n²)), not a soundness gap: the proof already covers
+correctness at any size. Efficient array-backed checking is the next step.
 
 ## Understanding it (the point is the ideas, not the syntax)
 
@@ -46,7 +76,7 @@ See [SETUP.md](SETUP.md) — install Lean 4, build, and open in VS Code to see t
 ## Why public
 
 The visibility is the point: this is a portfolio that grows as the skill grows. Roadmap ahead —
-bridge an LRAT certificate (S(4)/W(2,5)) into Lean, then a lemma from a 1D fluid blow-up analysis,
-then small Mathlib contributions.
+array-backed LRAT checking to scale past tiny instances, RAT-step support, then a lemma from a 1D
+fluid blow-up analysis, then small Mathlib contributions.
 
 MIT licensed.
