@@ -213,6 +213,12 @@ claim. `VersionedEvidenceSource` adds a version-pinned record and a current-chec
 same refusal rule for stale evidence. A claim backed by an old or unversioned source may remain visible
 as history, but it cannot power a current promotion under this formal grammar.
 
+The current-authority layer adds expiry and refresh. `ExpiringEvidenceSource` requires the fresh source
+to be unexpired before it can authorize a current claim. Lean proves that expired evidence cannot promote,
+that aggregation cannot manufacture unexpired authority, and that a valid versioned source can become
+current again through an explicit refresh check. This is the rule Foundation wants in production: keep old
+evidence visible, but require a new check before it authorizes today's recommendation.
+
 ## Understanding it (the point is the ideas, not the syntax)
 
 - [`UNDERSTANDING.md`](UNDERSTANDING.md) — a concept-first primer on what formal verification *is* and

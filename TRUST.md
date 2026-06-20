@@ -90,7 +90,8 @@ asset:
   conservative composition preserves consistency. The provenance layer begins the next step: a sourced
   boundary carries artifact/command/reproducibility metadata, and Lean proves that an invalid source
   record cannot support a promotable claim. The freshness layer tightens this again: stale or unversioned
-  evidence cannot support a current promotable claim.)*
+  evidence cannot support a current promotable claim. The current-authority layer adds expiry and refresh:
+  expired evidence remains history, but it cannot promote until a fresh check restores current status.)*
 
 In every case the judgment is the same: *Is there a small, checkable artifact? And do I trust the
 checker — at which named rung?*

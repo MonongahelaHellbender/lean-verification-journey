@@ -631,6 +631,102 @@ theorem shield_fresh_self_composition_private_daily_use_promotable :
   exact ⟨shield_boundary_self_composition_consistent, rfl,
     ⟨⟨rfl, rfl, rfl⟩, rfl, rfl⟩⟩
 
+/-- A still stricter source record for operational dashboards: the evidence is
+    source-valid, version-pinned, freshly checked, and not expired. Expired
+    evidence may remain visible as history, but not as current authority. -/
+structure ExpiringEvidenceSource where
+  source : VersionedEvidenceSource
+  notExpired : Bool
+
+def CurrentSourceValid (s : ExpiringEvidenceSource) : Prop :=
+  FreshSourceValid s.source ∧ s.notExpired = true
+
+structure CurrentSourcedBoundary where
+  boundary : ClaimBoundary
+  source : ExpiringEvidenceSource
+
+def CurrentClaimPromotable (b : CurrentSourcedBoundary) (c : Claim) : Prop :=
+  BoundaryConsistent b.boundary ∧ Allows b.boundary.doesClaim c ∧ CurrentSourceValid b.source
+
+def leanFoundationClaimsCurrentSource : ExpiringEvidenceSource :=
+  { source := leanFoundationClaimsFreshSource
+    notExpired := true }
+
+def shieldPrivateUseCurrentBoundary : CurrentSourcedBoundary :=
+  { boundary := shieldPrivateUseBoundary
+    source := leanFoundationClaimsCurrentSource }
+
+theorem lean_foundation_claims_current_source_valid :
+    CurrentSourceValid leanFoundationClaimsCurrentSource := by
+  exact ⟨lean_foundation_claims_fresh_source_valid, rfl⟩
+
+theorem shield_current_private_daily_use_promotable :
+    CurrentClaimPromotable shieldPrivateUseCurrentBoundary Claim.privateDailyUse := by
+  exact ⟨shield_boundary_consistent, shield_boundary_claims_private_daily_use,
+    lean_foundation_claims_current_source_valid⟩
+
+/-- Expired evidence cannot support a current promotable claim. -/
+theorem expired_source_not_current_promotable (b : CurrentSourcedBoundary) (c : Claim)
+    (h : ¬ CurrentSourceValid b.source) :
+    ¬ CurrentClaimPromotable b c := by
+  intro hp
+  exact h hp.2.2
+
+def composeCurrentSources (a b : ExpiringEvidenceSource) : ExpiringEvidenceSource :=
+  { source := composeFreshSources a.source b.source
+    notExpired := a.notExpired && b.notExpired }
+
+def composeCurrentBoundaries (a b : CurrentSourcedBoundary) : CurrentSourcedBoundary :=
+  { boundary := composeBoundaries a.boundary b.boundary
+    source := composeCurrentSources a.source b.source }
+
+theorem composed_current_source_requires_left (a b : ExpiringEvidenceSource) :
+    CurrentSourceValid (composeCurrentSources a b) → CurrentSourceValid a := by
+  intro h
+  exact ⟨composed_fresh_source_requires_left a.source b.source h.1,
+    and_true_left (by simpa [CurrentSourceValid, composeCurrentSources] using h.2)⟩
+
+theorem composed_current_source_requires_right (a b : ExpiringEvidenceSource) :
+    CurrentSourceValid (composeCurrentSources a b) → CurrentSourceValid b := by
+  intro h
+  exact ⟨composed_fresh_source_requires_right a.source b.source h.1,
+    and_true_right (by simpa [CurrentSourceValid, composeCurrentSources] using h.2)⟩
+
+/-- Current authority cannot be manufactured by aggregation: both inputs must
+    already be fresh and unexpired. -/
+theorem composed_current_source_requires_both (a b : ExpiringEvidenceSource) :
+    CurrentSourceValid (composeCurrentSources a b) → CurrentSourceValid a ∧ CurrentSourceValid b := by
+  intro h
+  exact ⟨composed_current_source_requires_left a b h,
+    composed_current_source_requires_right a b h⟩
+
+theorem composed_current_claim_requires_both_sources (a b : CurrentSourcedBoundary) (c : Claim) :
+    CurrentClaimPromotable (composeCurrentBoundaries a b) c →
+      CurrentSourceValid a.source ∧ CurrentSourceValid b.source := by
+  intro h
+  exact composed_current_source_requires_both a.source b.source h.2.2
+
+/-- Refreshing a fresh source by recording a new current check makes it current
+    again. This models update without deleting the old historical artifact. -/
+def refreshSource (s : VersionedEvidenceSource) : ExpiringEvidenceSource :=
+  { source :=
+      { source := s.source
+        versionRecorded := s.versionRecorded
+        currentCheckPassed := true }
+    notExpired := true }
+
+theorem refresh_source_current_if_source_and_version_valid (s : VersionedEvidenceSource)
+    (hSource : SourceValid s.source) (hVersion : s.versionRecorded = true) :
+    CurrentSourceValid (refreshSource s) := by
+  exact ⟨⟨hSource, hVersion, rfl⟩, rfl⟩
+
+theorem shield_current_self_composition_private_daily_use_promotable :
+    CurrentClaimPromotable
+      (composeCurrentBoundaries shieldPrivateUseCurrentBoundary shieldPrivateUseCurrentBoundary)
+      Claim.privateDailyUse := by
+  exact ⟨shield_boundary_self_composition_consistent, rfl,
+    ⟨⟨⟨rfl, rfl, rfl⟩, rfl, rfl⟩, rfl⟩⟩
+
 #check @shield_private_use_gate_earned
 #check @shield_public_release_not_earned
 #check @shield_private_use_block_safe
@@ -659,6 +755,12 @@ theorem shield_fresh_self_composition_private_daily_use_promotable :
 #check @composed_fresh_source_requires_both
 #check @composed_fresh_claim_requires_both_sources
 #check @shield_fresh_self_composition_private_daily_use_promotable
+#check @shield_current_private_daily_use_promotable
+#check @expired_source_not_current_promotable
+#check @composed_current_source_requires_both
+#check @composed_current_claim_requires_both_sources
+#check @refresh_source_current_if_source_and_version_valid
+#check @shield_current_self_composition_private_daily_use_promotable
 #print axioms shield_private_use_block_safe
 #print axioms production_authorization_requires_gate
 #print axioms checkpoint_authorization_requires_gate
@@ -678,3 +780,8 @@ theorem shield_fresh_self_composition_private_daily_use_promotable :
 #print axioms stale_source_not_fresh_promotable
 #print axioms composed_fresh_source_requires_both
 #print axioms composed_fresh_claim_requires_both_sources
+#print axioms shield_current_private_daily_use_promotable
+#print axioms expired_source_not_current_promotable
+#print axioms composed_current_source_requires_both
+#print axioms composed_current_claim_requires_both_sources
+#print axioms refresh_source_current_if_source_and_version_valid
