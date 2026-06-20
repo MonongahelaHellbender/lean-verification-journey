@@ -132,6 +132,25 @@ into `lratcheck` is the remaining (mechanical, untrusted) plumbing. The parser a
 list in memory, so truly enormous certificates would want streaming I/O. Neither is a soundness gap — the
 proofs cover any size; these are engineering limits.
 
+## Beyond SAT — the pattern transfers to AI safety ([`Ibp.lean`](LeanVerificationJourney/Ibp.lean))
+
+The whole point (see [`TRUST.md`](TRUST.md)) is that the verification *pattern* isn't about SAT — SAT is
+one instance. [`Ibp.lean`](LeanVerificationJourney/Ibp.lean) carries the same move into a different
+field: **neural-network robustness** ("no adversarial example in the ε-ball flips the class") — AI safety
+proper.
+
+The primitive is **interval bound propagation** — the "RUP" of NN verification: push an input *box*
+through the layers with interval arithmetic; if the output margin's lower bound stays positive, the
+network is robust on the whole box. Heavy verifiers (α,β-CROWN, Marabou) find tight bounds by
+branch-and-bound; the cheap, checkable core is this monotone propagation. Kept honest the same way as the
+SAT work — **integers** (quantized networks, a real subfield, so no float to trust) and **core Lean**, no
+Mathlib. `dot_interval` / `affine_sound` / `relu_sound` prove interval arithmetic over-approximates the
+true network; `net_robust` then certifies a worked 2-layer ReLU net robust over `[-1,1]²` — class 0 beats
+class 1 for *every* input in the box. Trusted base `propext, Classical.choice, Quot.sound`.
+
+That's the real signal: *the same person, the same pattern, a second domain.* What's verified changed
+completely; what you trust is still a hundred lines you can read.
+
 ## Understanding it (the point is the ideas, not the syntax)
 
 - [`UNDERSTANDING.md`](UNDERSTANDING.md) — a concept-first primer on what formal verification *is* and

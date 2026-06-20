@@ -69,7 +69,9 @@ The pattern is not about SAT. The same shape transfers — and learning to see i
 asset:
 - **SMT / theorem-prover output** — check the proof, trust the kernel, not the prover.
 - **Neural-network robustness certificates** (α,β-CROWN, Marabou) — "no adversarial example within ε,"
-  validated by a tiny checker rather than trusting the verifier.
+  validated by a tiny checker rather than trusting the verifier. *(Done — see
+  [`Ibp.lean`](LeanVerificationJourney/Ibp.lean): integer interval bound propagation, proved sound, a
+  worked 2-layer ReLU net certified robust over a whole input box.)*
 - **Compiler translation validation** — certify "this output matches this input" instead of trusting the
   optimizer.
 - **AI-generated proofs and code-with-specs** — the model proposes; a small trusted checker disposes.
