@@ -151,6 +151,15 @@ class 1 for *every* input in the box. Trusted base `propext, Classical.choice, Q
 That's the real signal: *the same person, the same pattern, a second domain.* What's verified changed
 completely; what you trust is still a hundred lines you can read.
 
+## Trusting an AI directly ([`AiProposes.lean`](LeanVerificationJourney/AiProposes.lean))
+
+The most direct case: an AI hands you a *proof*. [`AiProposes.lean`](LeanVerificationJourney/AiProposes.lean)
+makes "the AI proposes, the kernel disposes" concrete — a real LLM-generated proof, kernel-checked, with
+the `#print axioms` **audit** as the trust boundary. The audit does more than confirm a proof typechecks:
+it reveals *how* it was obtained (a proof that reached for the compiler shows the extra `ofReduceBool`
+axiom), it refuses false claims outright, and it exposes a cheating `sorry` (which shows up as `sorryAx`).
+AI fluency and confidence change none of it — the axiom list, not the model's say-so, is what you trust.
+
 ## Understanding it (the point is the ideas, not the syntax)
 
 - [`UNDERSTANDING.md`](UNDERSTANDING.md) — a concept-first primer on what formal verification *is* and

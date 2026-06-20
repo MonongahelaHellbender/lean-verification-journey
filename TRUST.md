@@ -75,6 +75,8 @@ asset:
 - **Compiler translation validation** — certify "this output matches this input" instead of trusting the
   optimizer.
 - **AI-generated proofs and code-with-specs** — the model proposes; a small trusted checker disposes.
+  *(Done — see [`AiProposes.lean`](LeanVerificationJourney/AiProposes.lean): a real LLM-generated proof
+  kernel-checked, with the `#print axioms` audit that reveals hidden trust and exposes a cheating `sorry`.)*
 
 In every case the judgment is the same: *Is there a small, checkable artifact? And do I trust the
 checker — at which named rung?*
