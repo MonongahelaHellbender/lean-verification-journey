@@ -18,17 +18,17 @@ why?* There's a spectrum of answers, from weak to strong:
    trustworthy program. Strongest.
 
 Formal verification lives at level 4. Its whole purpose is to move a claim up this ladder — to replace
-"trust me" with "here is a proof a machine re-checked."
+unsupported assertion with a proof a machine re-checked.
 
 ## 2. What a proof assistant actually is
 
 A tool like **Lean** is a language where you can write down two things: a **statement** (a precise claim)
-and a **proof** (a step-by-step justification) — and the tool's tiny core, the **kernel**, mechanically
+and a **proof** (a step-by-step justification) — and the tool's small core, the **kernel**, mechanically
 checks that the proof really does establish the statement. If it doesn't, it's rejected. No persuasion,
 no benefit of the doubt.
 
-The magic isn't that it's automatic (often it isn't). The magic is that *what you must trust shrinks to
-the kernel* — a few hundred lines you could audit — no matter how big or clever the rest is.
+The important property is not automation, which is often limited. It is that *what you must trust shrinks
+to the kernel* — a small core you can audit — no matter how large or complex the rest is.
 
 ## 3. The four mental models (these are the whole game)
 
@@ -87,7 +87,7 @@ it's a different muscle than generation:
 
 The person who can **direct AI to produce the work AND judge whether it's truly verified** sits in the
 highest-leverage seat there is — and it gets *more* valuable as AI improves, because there's more
-generated output that needs judging. These tiny Schur and van der Waerden proofs are the training reps.
+generated output that needs judging. These small Schur and van der Waerden proofs are training examples.
 The muscle they build — *statements as objects, trusted base, decidable vs. not, existence vs. universal,
 coverage* — is the muscle that scales all the way up.
 

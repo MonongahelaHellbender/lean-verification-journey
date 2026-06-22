@@ -2,12 +2,12 @@
 
 Learning **Lean 4** by formalizing real certified-computation results — in public, one lemma at a time.
 
-The thesis: as AI gets better at *generating* math and code, the scarce, durable skill is *verifying*
+The thesis: as AI gets better at *generating* math and code, the durable skill is *verifying*
 it. Lean is where that happens at the frontier (AlphaProof, Harmonic, formal-methods-for-AI). This repo
-is me building that skill the honest way — by re-proving results I've already certified by other means,
-now inside Lean's tiny trusted kernel.
+builds that skill by re-checking results I've already certified by other means,
+now inside Lean's small trusted kernel.
 
-**→ [`TRUST.md`](TRUST.md) — what this repo is *really* about:** the certificate pattern for trusting
+**→ [`TRUST.md`](TRUST.md) — what this repo is about:** the certificate pattern for trusting
 machine-generated answers, the named trusted-base ladder, and why this is the shape of trustworthy AI.
 
 ## Progress
@@ -20,8 +20,16 @@ machine-generated answers, the named trusted-base ladder, and why this is the sh
 | 4 | S(2) ≤ 4: **every** 2-coloring of {1,…,5} has a monochromatic `a+b=c` (universal impossibility) | [`LeanVerificationJourney/Basic.lean`](LeanVerificationJourney/Basic.lean) | ✅ `decide` |
 | 5 | W(2,3) ≤ 9: **every** 2-coloring of {1,…,9} has a monochromatic 3-term progression | [`LeanVerificationJourney/Basic.lean`](LeanVerificationJourney/Basic.lean) | ✅ `decide` |
 | 6 | S(3) ≤ 13: **every** 3-coloring of {1,…,14} has a monochromatic `a+b=c` — pins **S(3) = 13** with Lemma 2 | [`LeanVerificationJourney/Basic.lean`](LeanVerificationJourney/Basic.lean) | ✅ `native_decide` |
+| 7 | Hybrid Schur/vdW finite barrier: the [1..12] lower witness checks, and the [1..13] Barrier Atlas certificate exact-matches a Lean-generated CNF that the Lean RUP checker proves UNSAT | [`LeanVerificationJourney/HybridSchurVdw.lean`](LeanVerificationJourney/HybridSchurVdw.lean), [`LeanVerificationJourney/HybridSchurVdw13Data.lean`](LeanVerificationJourney/HybridSchurVdw13Data.lean) | ✅ `decide` + `native_decide` |
 
 Lemmas 1 + 4 pin **S(2) = 4** exactly. Lemmas 3 + 5 pin **W(2,3) = 9** exactly. Lemmas 2 + 6 pin **S(3) = 13** exactly.
+
+Lemma 7 is deliberately worded more narrowly: it is a Lean-checked **CNF binding + certificate replay**
+for the new Barrier Atlas hybrid Schur/vdW result, not yet a full semantic theorem that arbitrary
+colorings and the combinatorial statement are equivalent. The lower witness is checked directly; the
+upper side proves `hybrid13_cnf_unsat : Unsat (hybridSchurVdwCNF 13 3)` after proving the parsed cert's
+formula is exactly the CNF regenerated in Lean. The remaining formal leap is the general semantic bridge:
+any valid hybrid-avoiding coloring would satisfy that CNF.
 
 Lemmas 1–5 are checked by Lean's kernel with no external tools and no Mathlib — `#print axioms` confirms *"does not depend on any axioms."* Lemma 6 uses `native_decide` (3^14 = 4,782,969 colorings to rule out — too many for kernel exhaustion), which adds the Lean compiler (`Lean.ofReduceBool`) to the trusted base. That's the honest, documented cost of the speed. See CONCEPTS.md for the tradeoff.
 
@@ -62,6 +70,8 @@ the trusted core. The whole stack collapses to one proved theorem you can read.
 | `LratArray` | O(n) array checker (refines `Lrat`) | none | ✅ build |
 | `LratScale` | String-decoded certificates | + `Classical.choice` (String API) | ✅ build |
 | `LratW24` (+`Data`) | in-kernel W(2,4) ≤ 35 certificate | + `ofReduceBool` (`native_decide`) | ✅ build |
+| `HybridSchurVdw` | finite hybrid Schur/vdW spec, [1..12] witness, CNF encoder | `decide`; small `native_decide` audits | ✅ build |
+| `HybridSchurVdw13Data` | Barrier Atlas hybrid [1..13] cert replay + CNF exact-match | + `Classical.choice` + `ofReduceBool` | ✅ build |
 | `Main`/`lratcheck` | compiled checker, certs from file | + compiler + untrusted parser | ✅ **runs** on `samples_w33`/`samples_r34` |
 | `Ibp` | NN robustness (second domain) | + `Classical.choice` | ✅ build |
 | `AiProposes` | axiom-audit discipline on AI proofs | per-theorem (audited) | ✅ build |
@@ -89,6 +99,7 @@ which a one-line certificate now discharges.
 | `vdw923_unsat` | **W(2,3) ≤ 9** via a *real* certificate (10 proof steps, 50 clauses) | ✅ `decide` |
 | `w24_unsat` ([`LratW24.lean`](LeanVerificationJourney/LratW24.lean)) | **W(2,4) ≤ 35** — 2³⁵ ≈ 34 billion colorings, *far beyond brute force* — via a real 429-step certificate | ✅ `native_decide` |
 | `w33_unsat` ([`LratScale.lean`](LeanVerificationJourney/LratScale.lean)) | **W(3,3) ≤ 27** — a real **6179-step** certificate, certified in ~1.5 s | ✅ `native_decide`, String-encoded |
+| `hybrid13_cnf_unsat` ([`HybridSchurVdw13Data.lean`](LeanVerificationJourney/HybridSchurVdw13Data.lean)) | Barrier Atlas hybrid Schur/vdW [1..13] CNF — 274 clauses, 2443 steps — with parsed cert formula proved equal to the Lean-generated CNF | ✅ `native_decide`, String-encoded |
 
 These are **not hand-written**: a real `glucose` run produces a DRAT proof, `drat-trim` converts it to
 an LRAT certificate (`s VERIFIED`), and the data fed to `checkProof` is parsed straight from that. The
@@ -188,10 +199,10 @@ branch-and-bound; the cheap, checkable core is this monotone propagation. Kept h
 SAT work — **integers** (quantized networks, a real subfield, so no float to trust) and **core Lean**, no
 Mathlib. `dot_interval` / `affine_sound` / `relu_sound` prove interval arithmetic over-approximates the
 true network; `net_robust` then certifies a worked 2-layer ReLU net robust over `[-1,1]²` — class 0 beats
-class 1 for *every* input in the box. `net_robust_global` separately audits this particular toy network
+class 1 for *every* input in the box. `net_robust_global` separately audits this particular example network
 and proves the local box certificate was conservative: for this example, class 0 beats class 1 for every
 integer input. Trusted base `propext, Classical.choice, Quot.sound` for the reusable IBP checker, and
-`propext, Quot.sound` for the direct global toy-net proof.
+`propext, Quot.sound` for the direct global example-network proof.
 
 That's the real signal: *the same person, the same pattern, a second domain.* What's verified changed
 completely; what you trust is still a hundred lines you can read.
@@ -199,11 +210,11 @@ completely; what you trust is still a hundred lines you can read.
 ## Trusting an AI directly ([`AiProposes.lean`](LeanVerificationJourney/AiProposes.lean))
 
 The most direct case: an AI hands you a *proof*. [`AiProposes.lean`](LeanVerificationJourney/AiProposes.lean)
-makes "the AI proposes, the kernel disposes" concrete. It is a **static demonstration of the audit
+makes the "model proposes, kernel checks" pattern concrete. It is a **static demonstration of the audit
 discipline**, not an automated LLM→kernel loop: the worked proof was LLM-generated and is kernel-checked
 here, and the `#print axioms` **audit** is the trust boundary. The audit does more than confirm a proof
 typechecks: it reveals *how* it was obtained (a proof that reached for the compiler shows the extra
-`ofReduceBool` axiom), it refuses false claims outright, and it exposes a cheating `sorry` (which shows up
+`ofReduceBool` axiom), it refuses false claims outright, and it exposes an unsupported `sorry` (which shows up
 as `sorryAx`). AI fluency and confidence change none of it — the axiom list, not the model's say-so, is
 what you trust. (Wiring a live model's output through this audit is mechanical and unbuilt; the *discipline*
 is what's demonstrated, and it's model-agnostic.)
@@ -226,7 +237,7 @@ not earned. Lean proves:
 - `checkpoint_authorization_requires_gate`
 
 The key safety theorems do **not depend on any axioms**. This is the first formalized Foundation-native
-claim boundary: not a toy domain, but the project's own rule that review-ready evidence must not silently
+claim boundary: not merely an example domain, but the project's own rule that review-ready evidence must not silently
 turn into production or public-release authority.
 
 The module also formalizes Foundation's conservative evidence-composition rule: when multiple bounded

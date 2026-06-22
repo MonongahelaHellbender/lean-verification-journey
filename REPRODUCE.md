@@ -16,8 +16,15 @@ lake build
 
 This re-checks, in Lean's kernel, all the `decide` / `native_decide` results —
 including the **W(2,4) ≤ 35** in-kernel certificate (`LratW24`) and the
-**W(3,3) ≤ 27** String-decoded certificate (`LratScale`). A green build *is* the
-proof; `#print axioms <thm>` shows each one's trusted base.
+**W(3,3) ≤ 27** String-decoded certificate (`LratScale`). It also checks the
+Barrier Atlas hybrid Schur/vdW bridge:
+
+- `hybridWitness12_valid`: the explicit [1..12] coloring avoids both obstruction families;
+- `hybridWitness12_satisfies_cnf`: that lower witness satisfies the generated CNF;
+- `hybrid13_parsed_matches_encoder`: the parsed [1..13] cert formula exactly equals the Lean-generated CNF;
+- `hybrid13_cnf_unsat`: the Lean-generated [1..13] CNF is UNSAT by the parsed certificate.
+
+A green build *is* the proof; `#print axioms <thm>` shows each one's trusted base.
 
 ### The compiled checker, end-to-end, on the bundled certificates
 

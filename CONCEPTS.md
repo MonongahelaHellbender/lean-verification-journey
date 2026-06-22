@@ -9,8 +9,9 @@ syntax. Re-read it; understanding compounds with exposure.
 ## The one big shift: from "trust the answer" to "the logic was checked"
 
 Normally a computer gives you an answer and you trust the program. A **formal proof** flips that: the
-computer hands you the answer *plus a proof*, and a tiny, dumb, trusted **checker** (Lean's "kernel")
-re-verifies every logical step. You no longer trust the big clever program — only the tiny checker.
+computer hands you the answer *plus a proof*, and a small trusted **checker** (Lean's "kernel")
+re-verifies every logical step. You no longer trust the large generative or search program — only the
+small checker.
 
 That shrinking of *what you have to trust* is the whole game. It's called the **trusted base**, and
 making it small is why formal proof matters — especially for AI, which is big, clever, and not
@@ -45,7 +46,7 @@ than Python printing "True" — Python you trust; the kernel you can audit in a 
    name, pass around, and prove. Most of math and verification is manipulating these objects.
 2. **A proof is a checkable value.** Proving a statement = building an object whose existence the kernel
    can type-check. "Proof" stops being hand-wavy and becomes something a computer accepts or rejects.
-3. **Trusted base.** You only have to trust the tiny checker. Everything else — the clever search, the
+3. **Trusted base.** You only have to trust the small checker. Everything else — the clever search, the
    AI that wrote the proof — can be wrong and you'd still catch it. This is *the* answer to "how do I
    trust AI output?"
 4. **Decidable vs. not.** Some statements are *finite and mechanical* (`decide` can brute-check them);
@@ -53,9 +54,9 @@ than Python printing "True" — Python you trust; the kernel you can audit in a 
 
 ---
 
-## Why this tiny thing is the whole thesis in miniature
+## Why this small example carries the thesis
 
-This 20-line proof is the *atom* of "verifying AI." Scale the same idea up and it becomes: checking that
+This 20-line proof is the basic unit of "verifying AI." Scale the same idea up and it becomes: checking that
 an AI's generated *code* meets its spec, that an AI's *proof* is actually valid, that an AI *system*
 does what it claims. As AI generates more, the person who understands **what a verification means and
 whether it's the right one** holds the leverage. That person is what you're training your brain to be —
@@ -68,7 +69,7 @@ through exactly this kind of repeated, concept-first exposure.
 Same idea (a coloring with no monochromatic `a+b=c`), scaled to 3 colors and 13 numbers. But it teaches
 **one important upgrade in how you verify** — worth internalizing because it's a judgment skill:
 
-- **Lemma #1** listed the triples by hand (`1+1=2, 1+2=3, …`). Fine for tiny cases, but it leans on a
+- **Lemma #1** listed the triples by hand (`1+1=2, 1+2=3, …`). Fine for small cases, but it leans on a
   human having listed *every* triple. If you forgot one, the proof would still pass — and be meaningless.
   That's a **trust gap**.
 - **Lemma #2** instead says: "for *every* pair `a, b` in 1..13 with `a+b ≤ 13`, the triple `(a, b, a+b)`
@@ -84,7 +85,7 @@ acceptable-but-watch-it pattern.
 (Aside you'll meet later: checking "all pairs" can get slow as numbers grow. There's a faster cousin of
 `decide` called `native_decide` that compiles to fast machine code — but it *enlarges the trusted base*
 by trusting the compiler too. Speed vs. trusted-base is a real tradeoff you'll weigh. We're staying with
-plain `decide` here precisely because the trusted base stays tiny.)
+plain `decide` here precisely because the trusted base stays small.)
 
 ---
 
@@ -171,7 +172,7 @@ colorings instead of 2^5 = 32 — and that forces a deliberate engineering choic
 
 **Why `native_decide` instead of `decide`?**
 
-`decide` runs the check *inside Lean's kernel*. The kernel is tiny, interpreted, and trusted. For
+`decide` runs the check *inside Lean's kernel*. The kernel is small, interpreted, and trusted. For
 32 cases (Lemma #4), that's instant. For 4.8 million cases, the kernel would grind for hours.
 
 `native_decide` *compiles* the check to machine code and runs it. The result comes back in seconds.
@@ -220,8 +221,8 @@ the verified-math frontier actually scales, and it's worth understanding the sha
 
 **The problem.** A SAT solver can prove a formula has *no* solution — but the solver is a huge, fast,
 untrustworthy C program. You don't want to trust it. Modern solvers therefore emit a **certificate**: a
-step-by-step log (DRAT, then refined to **LRAT**) that a *tiny* checker can replay and confirm. The
-trust moves from the giant solver to the tiny checker — the same move as Lean's kernel, one level up.
+step-by-step log (DRAT, then refined to **LRAT**) that a small checker can replay and confirm. The
+trust moves from the solver to the small checker — the same move as Lean's kernel, one level up.
 
 **What we built.** A checker in core Lean that replays an LRAT-style certificate:
 
@@ -251,7 +252,7 @@ thing standing between you and a false claim.** When you evaluate an AI system l
 pattern to reach for — not "is the smart part correct?" but "is there a small *checkable* artifact, and
 do I trust the checker?"
 
-**Real certificates, not toys.** `schur5_unsat` (S(2) ≤ 4) and `vdw923_unsat` (W(2,3) ≤ 9) are checked
+**Real certificates, not demonstrations only.** `schur5_unsat` (S(2) ≤ 4) and `vdw923_unsat` (W(2,3) ≤ 9) are checked
 from certificates a real solver actually emitted — the second is a 10-step, 50-clause proof. Both
 kernel-check (`by decide`), so the trusted base is still just `propext, Quot.sound`. Debugging them
 taught the real lessons: LRAT clause-IDs are non-contiguous and interleave deletions (the parser must

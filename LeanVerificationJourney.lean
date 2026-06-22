@@ -7,6 +7,8 @@ import LeanVerificationJourney.LratW24
 import LeanVerificationJourney.LratScale
 import LeanVerificationJourney.LratArray
 import LeanVerificationJourney.LratRat
+import LeanVerificationJourney.HybridSchurVdw
+import LeanVerificationJourney.HybridSchurVdw13Data
 import LeanVerificationJourney.Ibp
 import LeanVerificationJourney.AiProposes
 import LeanVerificationJourney.FoundationClaims

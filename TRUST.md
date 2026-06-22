@@ -4,7 +4,7 @@ This repo is a combinatorics-and-Lean portfolio on the surface. Underneath it is
 demonstrated rather than asserted:
 
 > **As machines get exponentially better at *generating* — proofs, code, search results, plans — the
-> scarce and durable value moves to *verification*: making a machine's answer trustworthy.**
+> durable value moves to *verification*: making a machine's answer trustworthy.**
 
 Everything here is one worked example of the move that does that.
 
@@ -21,6 +21,9 @@ In this repo:
 - The "small proved thing" is `checkProof_unsat` / `checkProofArr_unsat`: a checker proved sound in
   Lean, whose entire trusted base you can read in one sitting.
 - The certificate is the solver's proof log (DRAT → LRAT).
+- The newest Barrier Atlas bridge adds a second small thing to check: Lean regenerates the hybrid
+  Schur/vdW CNF from the finite spec and proves the parsed certificate formula is exactly that CNF before
+  replaying the proof.
 - One-directional: a bug anywhere in the solver, the toolchain, or the (unverified) parser can only make
   the checker *reject* a valid certificate — it can **never** make it accept an invalid one. Soundness
   is asymmetric, and that asymmetry is the safety.
@@ -50,7 +53,7 @@ rung you are on and why that trust is acceptable for the claim at hand** — and
 up a rung without saying so. Most overclaiming in the world is a silent rung-change: a *demo* (one good
 run, an existence claim) presented as a *guarantee* (a universal claim, "it never fails"). Watching a
 checker prove a *universal* — "no assignment out of infinitely many satisfies this" — from a finite
-certificate is the antidote.
+certificate is the corrective.
 
 ---
 
@@ -63,22 +66,22 @@ proves none of those — a demo is an existence claim, and one good run says not
 You cannot make a large model trustworthy by inspection. But you can demand that its output come with a
 *checkable certificate*, and verify that certificate with something small you trust. That is the entire
 premise of programs like **ARIA's Safeguarded AI** (a gatekeeper that only permits an action accompanied
-by a proof it is safe). This repo is that idea in miniature, end to end and working.
+by a proof it is safe). This repo is that idea in a small, working form.
 
 The pattern is not about SAT. The same shape transfers — and learning to see it is the transferable
 asset:
 - **SMT / theorem-prover output** — check the proof, trust the kernel, not the prover.
 - **Neural-network robustness certificates** (α,β-CROWN, Marabou) — "no adversarial example within ε,"
-  validated by a tiny checker rather than trusting the verifier. *(Done — see
+  validated by a small checker rather than trusting the verifier. *(Done — see
   [`Ibp.lean`](LeanVerificationJourney/Ibp.lean): integer interval bound propagation, proved sound, a
   worked 2-layer ReLU net certified robust over a whole input box, plus a direct proof that this
-  particular toy net is globally separated over all integer inputs.)*
+  particular example net is globally separated over all integer inputs.)*
 - **Compiler translation validation** — certify "this output matches this input" instead of trusting the
   optimizer.
 - **AI-generated proofs and code-with-specs** — the model proposes; a small trusted checker disposes.
   *(Done — see [`AiProposes.lean`](LeanVerificationJourney/AiProposes.lean): a static demonstration of the
   audit discipline — an LLM-generated proof kernel-checked, with the `#print axioms` audit that reveals
-  hidden trust and exposes a cheating `sorry`. Wiring a live model through the audit is mechanical and
+  hidden trust and exposes an unsupported `sorry`. Wiring a live model through the audit is mechanical and
   unbuilt; the discipline is the point.)*
 - **Foundation's own claim boundaries** — the project emits review, private-use, public-release, and
   production statuses; a small theorem should make it impossible to confuse them. *(Started — see
@@ -104,6 +107,12 @@ asset:
 In every case the judgment is the same: *Is there a small, checkable artifact? And do I trust the
 checker — at which named rung?*
 
+The hybrid Schur/vdW result is a good example of the boundary discipline. What is now checked here:
+the [1..12] lower witness, the Lean CNF encoder, the exact match between the parsed Barrier Atlas cert
+and that encoder, and UNSAT of the Lean-generated CNF. What is not yet claimed here: a full semantic
+theorem that the CNF is equivalent to the informal combinatorial statement for arbitrary colorings, or
+any literature-priority claim for the finite result.
+
 ---
 
 ## The honest ceiling
@@ -124,4 +133,4 @@ Three limits, in increasing order of permanence:
 
 *The position this repo argues for, by demonstration: a person who can drive machines to produce
 results **and** certify those results against a small, named trusted base. As generation gets cheaper,
-that seat gets scarcer and more valuable.*
+that capability becomes more valuable.*
