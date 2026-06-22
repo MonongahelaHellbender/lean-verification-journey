@@ -20,16 +20,17 @@ machine-generated answers, the named trusted-base ladder, and why this is the sh
 | 4 | S(2) ≤ 4: **every** 2-coloring of {1,…,5} has a monochromatic `a+b=c` (universal impossibility) | [`LeanVerificationJourney/Basic.lean`](LeanVerificationJourney/Basic.lean) | ✅ `decide` |
 | 5 | W(2,3) ≤ 9: **every** 2-coloring of {1,…,9} has a monochromatic 3-term progression | [`LeanVerificationJourney/Basic.lean`](LeanVerificationJourney/Basic.lean) | ✅ `decide` |
 | 6 | S(3) ≤ 13: **every** 3-coloring of {1,…,14} has a monochromatic `a+b=c` — pins **S(3) = 13** with Lemma 2 | [`LeanVerificationJourney/Basic.lean`](LeanVerificationJourney/Basic.lean) | ✅ `native_decide` |
-| 7 | Hybrid Schur/vdW finite barrier: the [1..12] lower witness checks, and the [1..13] Barrier Atlas certificate exact-matches a Lean-generated CNF that the Lean RUP checker proves UNSAT | [`LeanVerificationJourney/HybridSchurVdw.lean`](LeanVerificationJourney/HybridSchurVdw.lean), [`LeanVerificationJourney/HybridSchurVdw13Data.lean`](LeanVerificationJourney/HybridSchurVdw13Data.lean) | ✅ `decide` + `native_decide` |
+| 7 | Hybrid Schur/vdW finite barrier: the [1..12] lower witness checks, and no formal `HybridAvoids` coloring of [1..13] exists after a semantic bridge to a Lean-generated CNF and checked certificate replay | [`LeanVerificationJourney/HybridSchurVdw.lean`](LeanVerificationJourney/HybridSchurVdw.lean), [`LeanVerificationJourney/HybridSchurVdw13Data.lean`](LeanVerificationJourney/HybridSchurVdw13Data.lean) | ✅ `decide` + `native_decide` |
 
 Lemmas 1 + 4 pin **S(2) = 4** exactly. Lemmas 3 + 5 pin **W(2,3) = 9** exactly. Lemmas 2 + 6 pin **S(3) = 13** exactly.
 
-Lemma 7 is deliberately worded more narrowly: it is a Lean-checked **CNF binding + certificate replay**
-for the new Barrier Atlas hybrid Schur/vdW result, not yet a full semantic theorem that arbitrary
-colorings and the combinatorial statement are equivalent. The lower witness is checked directly; the
-upper side proves `hybrid13_cnf_unsat : Unsat (hybridSchurVdwCNF 13 3)` after proving the parsed cert's
-formula is exactly the CNF regenerated in Lean. The remaining formal leap is the general semantic bridge:
-any valid hybrid-avoiding coloring would satisfy that CNF.
+Lemma 7 is deliberately bounded but now stronger than a raw CNF replay. The lower witness is checked
+directly. The upper side proves `hybrid13_cnf_unsat : Unsat (hybridSchurVdwCNF 13 3)`, proves the parsed
+cert's formula is exactly the CNF regenerated in Lean, and proves the one-way semantic bridge:
+`hybrid13_avoiding_satisfies_cnf` maps any formal `HybridAvoids w 13 3` coloring to a satisfying
+assignment for that CNF. Together these yield `hybrid13_no_avoiding_coloring : ¬ ∃ w, HybridAvoids w 13 3`.
+This is still not a literature-priority claim, and it does not claim a broader theorem beyond this finite
+formal specification and its stated trusted base.
 
 Lemmas 1–5 are checked by Lean's kernel with no external tools and no Mathlib — `#print axioms` confirms *"does not depend on any axioms."* Lemma 6 uses `native_decide` (3^14 = 4,782,969 colorings to rule out — too many for kernel exhaustion), which adds the Lean compiler (`Lean.ofReduceBool`) to the trusted base. That's the honest, documented cost of the speed. See CONCEPTS.md for the tradeoff.
 
@@ -99,7 +100,7 @@ which a one-line certificate now discharges.
 | `vdw923_unsat` | **W(2,3) ≤ 9** via a *real* certificate (10 proof steps, 50 clauses) | ✅ `decide` |
 | `w24_unsat` ([`LratW24.lean`](LeanVerificationJourney/LratW24.lean)) | **W(2,4) ≤ 35** — 2³⁵ ≈ 34 billion colorings, *far beyond brute force* — via a real 429-step certificate | ✅ `native_decide` |
 | `w33_unsat` ([`LratScale.lean`](LeanVerificationJourney/LratScale.lean)) | **W(3,3) ≤ 27** — a real **6179-step** certificate, certified in ~1.5 s | ✅ `native_decide`, String-encoded |
-| `hybrid13_cnf_unsat` ([`HybridSchurVdw13Data.lean`](LeanVerificationJourney/HybridSchurVdw13Data.lean)) | Barrier Atlas hybrid Schur/vdW [1..13] CNF — 274 clauses, 2443 steps — with parsed cert formula proved equal to the Lean-generated CNF | ✅ `native_decide`, String-encoded |
+| `hybrid13_cnf_unsat`, `hybrid13_no_avoiding_coloring` ([`HybridSchurVdw13Data.lean`](LeanVerificationJourney/HybridSchurVdw13Data.lean)) | Barrier Atlas hybrid Schur/vdW [1..13] CNF — 274 clauses, 2443 steps — with parsed cert formula proved equal to the Lean-generated CNF, plus a semantic bridge from formal `HybridAvoids` colorings to CNF satisfaction | ✅ `native_decide`, String-encoded |
 
 These are **not hand-written**: a real `glucose` run produces a DRAT proof, `drat-trim` converts it to
 an LRAT certificate (`s VERIFIED`), and the data fed to `checkProof` is parsed straight from that. The

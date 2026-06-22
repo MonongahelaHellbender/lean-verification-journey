@@ -9,9 +9,10 @@ import LeanVerificationJourney.Lrat
     no 3-coloring of [1..13] avoids both monochromatic Schur triples x+y=z
     and monochromatic 3-term arithmetic progressions.
 
-  This file does not yet replay the UNSAT certificate. It defines the finite
-  claim, checks the [1..12] lower witness, and builds the exact CNF encoder
-  whose output is later bound to the certificate.
+  This file defines the finite claim, checks the [1..12] lower witness, builds
+  the exact CNF encoder whose output is bound to the certificate, and proves the
+  one-way semantic bridge from a hybrid-avoiding coloring to a satisfying CNF
+  assignment. The UNSAT certificate replay lives in HybridSchurVdw13Data.lean.
 -/
 
 /-- The points `[1, ..., n]`, in increasing order. -/
@@ -87,6 +88,53 @@ abbrev HybridAvoids (w : List Nat) (n colors : Nat) : Prop :=
     ¬ (hybridWitnessColor w t.1 = hybridWitnessColor w t.2.1 ∧
        hybridWitnessColor w t.2.1 = hybridWitnessColor w t.2.2)
 
+/-- Membership in the generated point interval gives the expected bounds. -/
+theorem hybridPoints_mem_bounds {n point : Nat} (hp : point ∈ hybridPoints n) :
+    1 <= point ∧ point <= n := by
+  unfold hybridPoints at hp
+  rcases List.mem_map.mp hp with ⟨i, hi, hpoint⟩
+  have hi_lt : i < n := List.mem_range.mp hi
+  omega
+
+/-- `getD` agrees with indexed lookup inside the concrete witness length. -/
+theorem hybridWitnessColor_eq_getElem (w : List Nat) (point : Nat)
+    (hidx : point - 1 < w.length) :
+    hybridWitnessColor w point = w[point - 1] := by
+  unfold hybridWitnessColor
+  unfold List.getD
+  rw [List.getElem?_eq_getElem hidx]
+  rfl
+
+/-- A witness color at a generated point is itself in the allowed color range. -/
+theorem hybridWitnessColor_lt_of_mem_points {w : List Nat} {n colors point : Nat}
+    (hlen : w.length = n) (hcolors : ∀ color ∈ w, color < colors)
+    (hp : point ∈ hybridPoints n) :
+    hybridWitnessColor w point < colors := by
+  have hb := hybridPoints_mem_bounds hp
+  have hidx : point - 1 < w.length := by
+    rw [hlen]
+    omega
+  have hmem : hybridWitnessColor w point ∈ w := by
+    rw [hybridWitnessColor_eq_getElem w point hidx]
+    exact List.getElem_mem hidx
+  exact hcolors _ hmem
+
+/-- Every generated obstruction triple uses generated points. -/
+theorem hybridTriples_mem_points {n a b c : Nat} (ht : (a, b, c) ∈ hybridTriples n) :
+    a ∈ hybridPoints n ∧ b ∈ hybridPoints n ∧ c ∈ hybridPoints n := by
+  unfold hybridTriples at ht
+  rcases List.mem_flatMap.mp ht with ⟨a0, ha0, hrest⟩
+  rcases List.mem_flatMap.mp hrest with ⟨b0, hb0, hrest2⟩
+  rcases List.mem_flatMap.mp hrest2 with ⟨c0, hc0, hif⟩
+  by_cases hcond : hybridIsSchurTriple a0 b0 c0 || hybridIsAPTriple a0 b0 c0
+  · simp [hcond] at hif
+    rcases hif with ⟨haeq, hbeq, hceq⟩
+    subst a
+    subst b
+    subst c
+    exact ⟨ha0, hb0, hc0⟩
+  · simp [hcond] at hif
+
 /-- Barrier Atlas's tight lower witness: [1..12] is still colorable. -/
 def hybridWitness12 : List Nat :=
   [0, 1, 0, 2, 1, 2, 2, 0, 2, 0, 1, 1]
@@ -147,5 +195,56 @@ theorem hybridWitness12_satisfies_cnf :
       (hybridSchurVdwCNF 12 3) = true := by
   native_decide
 
-#check @hybridWitness12_valid
-#check @hybridSchurVdwCNF
+/--
+Every hybrid-avoiding 3-coloring of `[1..13]` satisfies the exact CNF generated
+above. This is the semantic bridge from the finite combinatorial specification
+to the SAT certificate interface.
+-/
+theorem hybrid13_avoiding_satisfies_cnf (w : List Nat)
+    (hw : HybridAvoids w 13 3) :
+    formulaTrue (hybridAssignmentOfColoring w 3) (hybridSchurVdwCNF 13 3) = true := by
+  rcases hw with ⟨hlen, hcolors, havoid⟩
+  simp [formulaTrue, clauseTrue, litTrue, hybridSchurVdwCNF, hybridColorClauses,
+    hybridPointClauses, hybridAtLeastOneClause, hybridAtMostOneClauses,
+    hybridObstructionClauses, hybridTripleClause, hybridPos, hybridNeg]
+  constructor
+  · intro point hp
+    have hpBounds := hybridPoints_mem_bounds hp
+    constructor
+    · have hactual : hybridWitnessColor w point < 3 :=
+        hybridWitnessColor_lt_of_mem_points hlen hcolors hp
+      refine ⟨hybridWitnessColor w point, hactual, ?_⟩
+      rw [hybridAssignment_var w point (hybridWitnessColor w point) 3 hpBounds.1
+        (by decide) hactual]
+      simp
+    · intro c1 hc1 c2 hc2 hlt
+      have h1 := hybridAssignment_var w point c1 3 hpBounds.1 (by decide) hc1
+      have h2 := hybridAssignment_var w point c2 3 hpBounds.1 (by decide) hc2
+      rw [h1, h2]
+      by_cases hactual1 : hybridWitnessColor w point = c1
+      · right
+        have hne : hybridWitnessColor w point ≠ c2 := by
+          intro hactual2
+          omega
+        simp [hne]
+      · left
+        simp [hactual1]
+  · intro a b c ht color hcolor
+    have hpoints := hybridTriples_mem_points ht
+    have haBounds := hybridPoints_mem_bounds hpoints.1
+    have hbBounds := hybridPoints_mem_bounds hpoints.2.1
+    have hcBounds := hybridPoints_mem_bounds hpoints.2.2
+    have haAssign := hybridAssignment_var w a color 3 haBounds.1 (by decide) hcolor
+    have hbAssign := hybridAssignment_var w b color 3 hbBounds.1 (by decide) hcolor
+    have hcAssign := hybridAssignment_var w c color 3 hcBounds.1 (by decide) hcolor
+    rw [haAssign, hbAssign, hcAssign]
+    by_cases ha : hybridWitnessColor w a = color
+    · by_cases hb : hybridWitnessColor w b = color
+      · by_cases hc : hybridWitnessColor w c = color
+        · have hmono : hybridWitnessColor w a = hybridWitnessColor w b ∧
+              hybridWitnessColor w b = hybridWitnessColor w c := by
+            constructor <;> omega
+          exact False.elim ((havoid (a, b, c) ht) hmono)
+        · simp [hc]
+      · simp [hb]
+    · simp [ha]

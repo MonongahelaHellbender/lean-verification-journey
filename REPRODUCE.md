@@ -22,7 +22,9 @@ Barrier Atlas hybrid Schur/vdW bridge:
 - `hybridWitness12_valid`: the explicit [1..12] coloring avoids both obstruction families;
 - `hybridWitness12_satisfies_cnf`: that lower witness satisfies the generated CNF;
 - `hybrid13_parsed_matches_encoder`: the parsed [1..13] cert formula exactly equals the Lean-generated CNF;
-- `hybrid13_cnf_unsat`: the Lean-generated [1..13] CNF is UNSAT by the parsed certificate.
+- `hybrid13_avoiding_satisfies_cnf`: any formal `HybridAvoids w 13 3` coloring would satisfy that CNF;
+- `hybrid13_cnf_unsat`: the Lean-generated [1..13] CNF is UNSAT by the parsed certificate;
+- `hybrid13_no_avoiding_coloring`: no formal `HybridAvoids w 13 3` coloring exists.
 
 A green build *is* the proof; `#print axioms <thm>` shows each one's trusted base.
 

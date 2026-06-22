@@ -30,5 +30,11 @@ theorem hybrid13_cnf_unsat : Unsat (hybridSchurVdwCNF 13 3) := by
   rw [← hybrid13_parsed_matches_encoder]
   exact hybrid13_parsed_unsat
 
-#check @hybrid13_cnf_unsat
-#print axioms hybrid13_cnf_unsat
+theorem hybrid13_no_avoiding_coloring :
+    ¬ ∃ w, HybridAvoids w 13 3 := by
+  intro h
+  rcases h with ⟨w, hw⟩
+  have hsat := hybrid13_avoiding_satisfies_cnf w hw
+  have hunsat := hybrid13_cnf_unsat (hybridAssignmentOfColoring w 3)
+  rw [hsat] at hunsat
+  contradiction

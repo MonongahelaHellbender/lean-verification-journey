@@ -109,9 +109,11 @@ checker — at which named rung?*
 
 The hybrid Schur/vdW result is a good example of the boundary discipline. What is now checked here:
 the [1..12] lower witness, the Lean CNF encoder, the exact match between the parsed Barrier Atlas cert
-and that encoder, and UNSAT of the Lean-generated CNF. What is not yet claimed here: a full semantic
-theorem that the CNF is equivalent to the informal combinatorial statement for arbitrary colorings, or
-any literature-priority claim for the finite result.
+and that encoder, UNSAT of the Lean-generated CNF, and the one-way semantic bridge from any formal
+`HybridAvoids w 13 3` coloring to a satisfying CNF assignment. The resulting checked statement is
+`hybrid13_no_avoiding_coloring : ¬ ∃ w, HybridAvoids w 13 3`. What is not claimed here: literature
+priority, a broader theorem outside this finite formal specification, or trust beyond the documented
+String/native certificate-replay trusted base.
 
 ---
 
