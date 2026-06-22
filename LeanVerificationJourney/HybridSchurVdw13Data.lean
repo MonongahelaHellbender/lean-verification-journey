@@ -6,8 +6,9 @@ import LeanVerificationJourney.LratScale
   ----------------------------------------------------------------------------
   Certificate replay for the finite hybrid Schur/vdW [1..13] obstruction.
 
-  The string below is mechanically generated from Barrier Atlas's flat RUP cert:
-    certs/hybrid_schur_vdw_3color_13.cert
+  The string below is mechanically generated from the Barrier Atlas flat RUP cert
+    `certs/hybrid_schur_vdw_3color_13.cert`
+  (see github.com/MonongahelaHellbender/barrier-atlas).
 
   The proof has two gates:
   1. `checkProof_unsat` verifies the parsed certificate against the parsed CNF.
