@@ -38,12 +38,12 @@ The discipline this repo trains is **stating precisely what you are trusting**, 
 auditable: `#print axioms` lists every assumption a theorem leans on. The results here climb a ladder,
 and each rung trades a larger trusted base for more capability — *on purpose, and labelled*:
 
-| rung | what it buys | trusted base (beyond Lean's kernel) |
-|---|---|---|
-| `decide` | small finite facts | **nothing** — `propext, Quot.sound` only |
-| `native_decide` | millions of cases | + the Lean **compiler** (`ofReduceBool`) |
-| `String`-decoded certificate | thousands of proof steps, fast | + Lean's classical **String API** (`Classical.choice`) |
-| verified checker as a **compiled program** | *millions* of steps from a file (S(4) ≤ 44, W(2,5) ≤ 178) | + the compiler + an untrusted parser; the output is a *program run*, not a kernel-checked object |
+| rung | what it buys | trusted base (beyond Lean's kernel) | re-checked in CI? |
+|---|---|---|---|
+| `decide` | small finite facts | **nothing** — `propext, Quot.sound` only | ✅ kernel, every push |
+| `native_decide` | millions of cases | + the Lean **compiler** (`ofReduceBool`) | ✅ kernel, every push |
+| `String`-decoded certificate | thousands of proof steps, fast | + Lean's classical **String API** (`Classical.choice`) | ✅ kernel, every push |
+| verified checker as a **compiled program** | *millions* of steps from a file (S(4) ≤ 44, W(2,5) ≤ 178) | + the compiler + an untrusted parser; the output is a *program run*, not a kernel-checked object | ⚠️ program **run** in CI on bundled sample certs; the S(4)/W(2,5)-scale certs are local-only (see [`REPRODUCE.md`](REPRODUCE.md)) |
 
 The skill is not "make the trusted base zero." That is impossible. The skill is **knowing exactly which
 rung you are on and why that trust is acceptable for the claim at hand** — and refusing to quietly slide
@@ -76,8 +76,10 @@ asset:
 - **Compiler translation validation** — certify "this output matches this input" instead of trusting the
   optimizer.
 - **AI-generated proofs and code-with-specs** — the model proposes; a small trusted checker disposes.
-  *(Done — see [`AiProposes.lean`](LeanVerificationJourney/AiProposes.lean): a real LLM-generated proof
-  kernel-checked, with the `#print axioms` audit that reveals hidden trust and exposes a cheating `sorry`.)*
+  *(Done — see [`AiProposes.lean`](LeanVerificationJourney/AiProposes.lean): a static demonstration of the
+  audit discipline — an LLM-generated proof kernel-checked, with the `#print axioms` audit that reveals
+  hidden trust and exposes a cheating `sorry`. Wiring a live model through the audit is mechanical and
+  unbuilt; the discipline is the point.)*
 - **Foundation's own claim boundaries** — the project emits review, private-use, public-release, and
   production statuses; a small theorem should make it impossible to confuse them. *(Started — see
   [`FoundationClaims.lean`](LeanVerificationJourney/FoundationClaims.lean): private daily use can be

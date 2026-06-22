@@ -35,6 +35,41 @@ tool — re-checked here by Lean instead of Python, shrinking the trusted base. 
 plus a machine-checkable **LRAT** certificate. Carrying that style of certificate *into* Lean is the
 next part of the project — and it has now started:
 
+## The module map — one ladder, and what's machine-checked where
+
+The repo is a single **trust ladder**: each rung trades a wider trusted base for more scale. The five
+`Lrat*` modules are not five competing checkers — they are *layers of one*, and the layering is the point:
+
+- **`Lrat.lean`** is the foundation: the list-based RUP checker with the soundness theorem
+  (`checkProof_unsat`). Every other rung ultimately rests on *this* proof.
+- **`LratRat.lean`** generalizes the *rule set* — RUP **+ RAT** — so the soundness covers any DRAT/LRAT
+  certificate, not just RUP ones.
+- **`LratArray.lean`** generalizes the *performance* — an O(n) array-backed database whose correctness is
+  inherited from `Lrat`'s proof by refinement (no new trust).
+- **`LratScale.lean`** generalizes the *encoding* — ship the certificate as a `String` and parse at
+  runtime, so thousands of steps elaborate instantly.
+- **`LratW24.lean`** is an *instance*, not a layer: a single in-kernel W(2,4) ≤ 35 theorem. Its bulky
+  429-step certificate literal lives in **`LratW24Data.lean`** so the proof logic stays readable.
+
+So "Array" doesn't replace "List" — it *reduces to* List soundness; "Scale" and "RAT" widen the input, not
+the trusted core. The whole stack collapses to one proved theorem you can read.
+
+| module | rung / role | trusted base (beyond kernel) | machine-checked in CI? |
+|---|---|---|---|
+| `Basic` | brute-force small values | `decide`; Lemma 6 adds `ofReduceBool` | ✅ kernel re-checks on build |
+| `Lrat` | RUP checker + soundness proof | none (`propext, Quot.sound`) | ✅ build |
+| `LratRat` | adds RAT (general DRAT/LRAT) | none | ✅ build |
+| `LratArray` | O(n) array checker (refines `Lrat`) | none | ✅ build |
+| `LratScale` | String-decoded certificates | + `Classical.choice` (String API) | ✅ build |
+| `LratW24` (+`Data`) | in-kernel W(2,4) ≤ 35 certificate | + `ofReduceBool` (`native_decide`) | ✅ build |
+| `Main`/`lratcheck` | compiled checker, certs from file | + compiler + untrusted parser | ✅ **runs** on `samples_w33`/`samples_r34` |
+| `Ibp` | NN robustness (second domain) | + `Classical.choice` | ✅ build |
+| `AiProposes` | axiom-audit discipline on AI proofs | per-theorem (audited) | ✅ build |
+
+The one row that is a *program run* rather than a kernel-checked object is `lratcheck` — so CI does not just
+build it, it **runs** it on the two bundled certificates and fails unless both emit `VERIFIED`. The two
+large certs (S(4), W(2,5)) are local-only by size; see [`REPRODUCE.md`](REPRODUCE.md).
+
 ## The LRAT bridge — a verified certificate checker
 
 [`LeanVerificationJourney/Lrat.lean`](LeanVerificationJourney/Lrat.lean) is a small **proof checker**,
@@ -97,6 +132,13 @@ Both are *known* combinatorial numbers, and both are far beyond anything embedda
 the Lean-proven checker dispatches them. **This is also where the array database finally earns its keep:**
 useless when elaboration was the bottleneck, essential once runtime is (a List database would be O(n²)).
 
+> **Honesty note — these two certs are not in this repo.** At 144 MB and 449 MB they are too large to
+> commit or to run on a free CI runner, so the S(4)/W(2,5) results are reproducible *locally* but are
+> **not** exercised in CI. What CI *does* run end-to-end is the same `lratcheck` program on the two
+> bundled sample certificates (below). See [`REPRODUCE.md`](REPRODUCE.md) for the exact pipeline to
+> regenerate and re-check the large certs yourself. The checker — and therefore the trust model — is
+> identical regardless of cert size.
+
 The trust model genuinely shifts here, and it's worth being precise: the output `s VERIFIED` is *not* a
 kernel-checked proof object — it's the result of *running a proven-correct program*. You trust the Lean
 proof of `checkProofArr_unsat`, the Lean compiler, and the (untrusted) parser — exactly the trust model of
@@ -157,11 +199,14 @@ completely; what you trust is still a hundred lines you can read.
 ## Trusting an AI directly ([`AiProposes.lean`](LeanVerificationJourney/AiProposes.lean))
 
 The most direct case: an AI hands you a *proof*. [`AiProposes.lean`](LeanVerificationJourney/AiProposes.lean)
-makes "the AI proposes, the kernel disposes" concrete — a real LLM-generated proof, kernel-checked, with
-the `#print axioms` **audit** as the trust boundary. The audit does more than confirm a proof typechecks:
-it reveals *how* it was obtained (a proof that reached for the compiler shows the extra `ofReduceBool`
-axiom), it refuses false claims outright, and it exposes a cheating `sorry` (which shows up as `sorryAx`).
-AI fluency and confidence change none of it — the axiom list, not the model's say-so, is what you trust.
+makes "the AI proposes, the kernel disposes" concrete. It is a **static demonstration of the audit
+discipline**, not an automated LLM→kernel loop: the worked proof was LLM-generated and is kernel-checked
+here, and the `#print axioms` **audit** is the trust boundary. The audit does more than confirm a proof
+typechecks: it reveals *how* it was obtained (a proof that reached for the compiler shows the extra
+`ofReduceBool` axiom), it refuses false claims outright, and it exposes a cheating `sorry` (which shows up
+as `sorryAx`). AI fluency and confidence change none of it — the axiom list, not the model's say-so, is
+what you trust. (Wiring a live model's output through this audit is mechanical and unbuilt; the *discipline*
+is what's demonstrated, and it's model-agnostic.)
 
 ## Turning the lens back on Foundation itself ([`FoundationClaims.lean`](LeanVerificationJourney/FoundationClaims.lean))
 

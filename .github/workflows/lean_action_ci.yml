@@ -11,4 +11,25 @@ jobs:
 
     steps:
       - uses: actions/checkout@v5
+      # Builds the library: every kernel-checked theorem (incl. the W(2,4) ≤ 35
+      # in-kernel certificate in LratW24) is re-checked here on every push.
       - uses: leanprover/lean-action@v1
+
+      # Rung 7 is a compiled *program*, not a kernel-checked object — so building
+      # it is not enough; it has to actually RUN and emit VERIFIED. This exercises
+      # the proven-correct checker end-to-end on the two bundled certificates,
+      # so the "verified checker as a program" claim is reproduced in CI, not just
+      # asserted from a local run. (The S(4)/W(2,5) certs are too large to ship;
+      # see REPRODUCE.md to regenerate and check those.)
+      - name: Run the compiled checker on the bundled certificates
+        run: |
+          set -euo pipefail
+          lake build lratcheck
+          for cert in samples_w33.cert samples_r34.cert; do
+            echo "=== lratcheck $cert ==="
+            out="$(./.lake/build/bin/lratcheck "$cert")"
+            echo "$out"
+            echo "$out" | grep -q "VERIFIED" \
+              || { echo "FAIL: $cert did not certify"; exit 1; }
+          done
+          echo "All bundled certificates VERIFIED by the Lean-proven checker."
