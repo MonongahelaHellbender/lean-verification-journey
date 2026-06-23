@@ -103,6 +103,11 @@ asset:
   match, and current source validity; `review`, `blocked`, and `refused` rows cannot promote. Aggregated
   dashboard rows compose conservatively too: aggregate promotion requires both input promotions and
   preserves input source/status obligations.)*
+- **Barrier Atlas's decision core** — the runner contract says `CERTIFIED` is reachable only through a
+  positive evidence path. *(Done — see [`RunnerFailClosed.lean`](LeanVerificationJourney/RunnerFailClosed.lean):
+  a finite Boolean model proves `runner_no_fail_open` with axiom base `propext`; `RunnerDecisionTable.lean`
+  exports the full table, and Barrier Atlas bridges that table back to Python by test. The fact-extraction
+  layer remains trusted.)*
 
 In every case the judgment is the same: *Is there a small, checkable artifact? And do I trust the
 checker — at which named rung?*

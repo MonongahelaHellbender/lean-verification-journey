@@ -76,6 +76,7 @@ the trusted core. The whole stack collapses to one proved theorem you can read.
 | `Main`/`lratcheck` | compiled checker, certs from file | + compiler + untrusted parser | ✅ **runs** on `samples_w33`/`samples_r34` |
 | `Ibp` | NN robustness (second domain) | + `Classical.choice` | ✅ build |
 | `AiProposes` | axiom-audit discipline on AI proofs | per-theorem (audited) | ✅ build |
+| `RunnerFailClosed` | Barrier Atlas finite decision-core fail-closed theorem | + `propext` | ✅ build |
 
 The one row that is a *program run* rather than a kernel-checked object is `lratcheck` — so CI does not just
 build it, it **runs** it on the two bundled certificates and fails unless both emit `VERIFIED`. The two
@@ -219,6 +220,17 @@ typechecks: it reveals *how* it was obtained (a proof that reached for the compi
 as `sorryAx`). AI fluency and confidence change none of it — the axiom list, not the model's say-so, is
 what you trust. (Wiring a live model's output through this audit is mechanical and unbuilt; the *discipline*
 is what's demonstrated, and it's model-agnostic.)
+
+## A fail-closed decision core for Barrier Atlas
+
+[`RunnerFailClosed.lean`](LeanVerificationJourney/RunnerFailClosed.lean) turns the
+verification discipline back onto the Barrier Atlas runner contract. It models the
+finite verdict decision core as a Boolean `Facts` record and proves
+`runner_no_fail_open`: if the modeled positive signal is absent, the core cannot
+return `CERTIFIED`. The proof's audited base is `propext`; the Python runner bridge
+is tested separately by the atlas decision-table test, which compares a fresh
+`RunnerDecisionTable.lean` export, the committed table, and the Python mirror. This
+is a proved core, not a proof of every implementation detail.
 
 ## Turning the lens back on Foundation itself ([`FoundationClaims.lean`](LeanVerificationJourney/FoundationClaims.lean))
 
